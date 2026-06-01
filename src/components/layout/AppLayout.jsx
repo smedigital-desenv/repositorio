@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import {
+<<<<<<< HEAD
   HelpCircle, FileText, FolderOpen, ClipboardList,
   Network, Layers, Heart, BarChart2, Map, Eye,
   LogOut, Menu, X, BookMarked, Users, UserCircle
+=======
+  BookOpen, HelpCircle, FileText, FolderOpen, ClipboardList,
+  Network, Layers, Heart, BarChart2, Map, Eye,
+  LogOut, ChevronDown, Menu, X, BookMarked
+>>>>>>> 7a1d21c6bfe8a30752aa5b2ff8b74e3d1aec4013
 } from 'lucide-react'
 import styles from './AppLayout.module.css'
 
@@ -21,9 +27,15 @@ const NAV_ITEMS = [
   {
     section: 'Organização',
     items: [
+<<<<<<< HEAD
       { to: '/matriz',    label: 'Matriz Curricular', icon: Network },
       { to: '/colecoes',  label: 'Minhas Coleções',   icon: Layers  },
       { to: '/favoritos', label: 'Favoritos',         icon: Heart   },
+=======
+      { to: '/matriz',    label: 'Matriz Curricular', icon: Network, badge: null },
+      { to: '/colecoes',  label: 'Minhas Coleções',   icon: Layers,  badge: null },
+      { to: '/favoritos', label: 'Favoritos',         icon: Heart,   badge: null },
+>>>>>>> 7a1d21c6bfe8a30752aa5b2ff8b74e3d1aec4013
     ]
   },
   {
