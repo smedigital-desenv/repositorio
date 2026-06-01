@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   BookOpen, HelpCircle, FileText, FolderOpen, ClipboardList,
-  Sitemap, Layers, Heart, BarChart2, Map, Eye,
+  Network, Layers, Heart, BarChart2, Map, Eye,
   LogOut, ChevronDown, Menu, X, BookMarked
 } from 'lucide-react'
 import styles from './AppLayout.module.css'
@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   {
     section: 'Organização',
     items: [
-      { to: '/matriz',    label: 'Matriz Curricular', icon: Sitemap, badge: null },
+      { to: '/matriz',    label: 'Matriz Curricular', icon: Network, badge: null },
       { to: '/colecoes',  label: 'Minhas Coleções',   icon: Layers,  badge: null },
       { to: '/favoritos', label: 'Favoritos',         icon: Heart,   badge: null },
     ]
