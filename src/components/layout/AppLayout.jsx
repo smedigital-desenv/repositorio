@@ -2,9 +2,15 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import {
+<<<<<<< HEAD
+  HelpCircle, FileText, FolderOpen, ClipboardList,
+  Network, Layers, Heart, BarChart2, Map, Eye,
+  LogOut, Menu, X, BookMarked, Users, UserCircle
+=======
   BookOpen, HelpCircle, FileText, FolderOpen, ClipboardList,
   Network, Layers, Heart, BarChart2, Map, Eye,
   LogOut, ChevronDown, Menu, X, BookMarked
+>>>>>>> 7a1d21c6bfe8a30752aa5b2ff8b74e3d1aec4013
 } from 'lucide-react'
 import styles from './AppLayout.module.css'
 
@@ -12,31 +18,38 @@ const NAV_ITEMS = [
   {
     section: 'Principal',
     items: [
-      { to: '/questoes',   label: 'Banco de Questões',     icon: HelpCircle,    badge: null },
-      { to: '/planos',     label: 'Planos de Aula',        icon: FileText,      badge: null },
-      { to: '/materiais',  label: 'Materiais Pedagógicos', icon: FolderOpen,    badge: null },
-      { to: '/provas',     label: 'Provas e Avaliações',   icon: ClipboardList, badge: null },
+      { to: '/questoes',   label: 'Banco de Questões',     icon: HelpCircle    },
+      { to: '/planos',     label: 'Planos de Aula',        icon: FileText      },
+      { to: '/materiais',  label: 'Materiais Pedagógicos', icon: FolderOpen    },
+      { to: '/provas',     label: 'Provas e Avaliações',   icon: ClipboardList },
     ]
   },
   {
     section: 'Organização',
     items: [
+<<<<<<< HEAD
+      { to: '/matriz',    label: 'Matriz Curricular', icon: Network },
+      { to: '/colecoes',  label: 'Minhas Coleções',   icon: Layers  },
+      { to: '/favoritos', label: 'Favoritos',         icon: Heart   },
+=======
       { to: '/matriz',    label: 'Matriz Curricular', icon: Network, badge: null },
       { to: '/colecoes',  label: 'Minhas Coleções',   icon: Layers,  badge: null },
       { to: '/favoritos', label: 'Favoritos',         icon: Heart,   badge: null },
+>>>>>>> 7a1d21c6bfe8a30752aa5b2ff8b74e3d1aec4013
     ]
   },
   {
     section: 'Gestão',
     items: [
-      { to: '/relatorios', label: 'Relatórios',          icon: BarChart2, badge: null },
-      { to: '/cobertura',  label: 'Cobertura Curricular', icon: Map,      badge: null },
-      { to: '/revisao',    label: 'Fila de Revisão',      icon: Eye,      badge: 'revisao' },
+      { to: '/relatorios', label: 'Relatórios',           icon: BarChart2 },
+      { to: '/cobertura',  label: 'Cobertura Curricular',  icon: Map       },
+      { to: '/revisao',    label: 'Fila de Revisão',       icon: Eye,  papeis: ['formador','administrador'] },
+      { to: '/usuarios',   label: 'Usuários',              icon: Users, papeis: ['formador','administrador'] },
     ]
   },
 ]
 
-function NavItem({ to, label, Icon, badge, badgeCount }) {
+function NavItem({ to, label, Icon }) {
   return (
     <NavLink
       to={to}
@@ -46,9 +59,6 @@ function NavItem({ to, label, Icon, badge, badgeCount }) {
     >
       <Icon size={16} aria-hidden />
       <span>{label}</span>
-      {badge && badgeCount > 0 && (
-        <span className={styles.badgeWarning}>{badgeCount}</span>
-      )}
     </NavLink>
   )
 }
@@ -75,7 +85,6 @@ export default function AppLayout() {
 
   const sidebar = (
     <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
-      {/* Logo */}
       <div className={styles.sidebarHeader}>
         <div className={styles.logo}>
           <div className={styles.logoIcon}>
@@ -88,48 +97,42 @@ export default function AppLayout() {
         </div>
       </div>
 
-      {/* Navegação */}
       <nav className={styles.nav} aria-label="Navegação principal">
         {NAV_ITEMS.map(group => (
           <div key={group.section}>
             <div className={styles.navSection}>{group.section}</div>
-            {group.items.map(item => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                label={item.label}
-                Icon={item.icon}
-                badge={item.badge}
-              />
-            ))}
+            {group.items
+              .filter(item => !item.papeis || item.papeis.includes(papel))
+              .map(item => (
+                <NavItem key={item.to} to={item.to} label={item.label} Icon={item.icon} />
+              ))
+            }
           </div>
         ))}
       </nav>
 
-      {/* Usuário */}
       <div className={styles.sidebarFooter}>
-        <div className={styles.userChip}>
+        <NavLink to="/perfil" className={styles.userChip}>
           <div className={styles.avatar}>{iniciais}</div>
           <div className={styles.userInfo}>
             <div className={styles.userName}>{perfil?.nome ?? 'Carregando...'}</div>
             <div className={styles.userRole}>{papelLabel}</div>
           </div>
-          <button
-            className={styles.signOutBtn}
-            onClick={handleSignOut}
-            title="Sair"
-            aria-label="Sair da conta"
-          >
-            <LogOut size={15} />
-          </button>
-        </div>
+        </NavLink>
+        <button
+          className={styles.signOutBtn}
+          onClick={handleSignOut}
+          title="Sair"
+          aria-label="Sair da conta"
+        >
+          <LogOut size={15} />
+        </button>
       </div>
     </aside>
   )
 
   return (
     <div className={styles.shell}>
-      {/* Overlay mobile */}
       {sidebarOpen && (
         <div
           className={styles.overlay}
@@ -141,7 +144,6 @@ export default function AppLayout() {
       {sidebar}
 
       <div className={styles.main}>
-        {/* Topbar mobile */}
         <header className={styles.mobileTopbar}>
           <button
             className={styles.menuBtn}
@@ -153,7 +155,6 @@ export default function AppLayout() {
           <div className={styles.mobileLogo}>RepedMunicipal</div>
         </header>
 
-        {/* Conteúdo da página */}
         <main className={styles.content} id="main-content">
           <Outlet />
         </main>
