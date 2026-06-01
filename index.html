@@ -6,16 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Repositório Pedagógico Municipal</title>
     <meta name="description" content="Plataforma colaborativa de recursos pedagógicos da rede municipal de ensino." />
-    <script>
+<script>
   (function() {
-    var l = window.location;
-    if (l.search[1] === '/') {
-      var decoded = l.search.slice(1).split('&').map(function(s) {
-        return s.replace(/~and~/g, '&');
-      }).join('?');
-      window.history.replaceState(null, null,
-        l.pathname.slice(0, -1) + decoded + l.hash
-      );
+    var redirect = sessionStorage.getItem('redirect');
+    if (redirect) {
+      sessionStorage.removeItem('redirect');
+      window.history.replaceState(null, null, '/repositorio' + redirect);
     }
   })();
 </script>
