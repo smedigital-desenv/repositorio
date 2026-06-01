@@ -1,0 +1,266 @@
+import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { buscarQuestao, mudarStatus, avaliarQuestao, toggleFavorito, listarFavoritos, registrarVisualizacao } from '../../services/questoes'
+import { useAuth } from '../../contexts/AuthContext'
+import { ChevronLeft, Pencil, Star, Heart, CheckCircle, XCircle, Clock, Archive } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import styles from './QuestaoDetalhe.module.css'
+
+const STATUS_CONFIG = {
+  rascunho:   { label: 'Rascunho',   icon: Clock,        cor: 'gray'  },
+  em_revisao: { label: 'Em revisão', icon: Clock,        cor: 'amber' },
+  aprovado:   { label: 'Aprovado',   icon: CheckCircle,  cor: 'blue'  },
+  publicado:  { label: 'Publicado',  icon: CheckCircle,  cor: 'green' },
+  arquivado:  { label: 'Arquivado',  icon: Archive,      cor: 'gray'  },
+}
+
+export default function QuestaoDetalhe() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { usuario, isFormador, isAdmin } = useAuth()
+  const queryClient = useQueryClient()
+  const podeAprovar = isFormador || isAdmin
+  const [minhaAvaliacao, setMinhaAvaliacao] = useState(0)
+  const [favoritoId, setFavoritoId] = useState(null)
+
+  const { data: questao, isLoading } = useQuery({
+    queryKey: ['questao', id],
+    queryFn: () => buscarQuestao(id),
+  })
+
+  const { data: favoritos = [] } = useQuery({
+    queryKey: ['favoritos'],
+    queryFn: listarFavoritos,
+  })
+
+  useEffect(() => {
+    if (id) registrarVisualizacao(id)
+  }, [id])
+
+  useEffect(() => {
+    if (questao && usuario) {
+      const minha = questao.avaliacoes?.find(a => a.autor_id === usuario.id)
+      if (minha) setMinhaAvaliacao(minha.nota)
+    }
+  }, [questao, usuario])
+
+  useEffect(() => {
+    const fav = favoritos.find(f => f.questao_id === id)
+    setFavoritoId(fav?.id ?? null)
+  }, [favoritos, id])
+
+  const mutarStatus = useMutation({
+    mutationFn: ({ status, justificativa }) => mudarStatus(id, status, justificativa),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['questao', id])
+      toast.success('Status atualizado!')
+    },
+    onError: () => toast.error('Erro ao atualizar status'),
+  })
+
+  const mutarAvaliacao = useMutation({
+    mutationFn: (nota) => avaliarQuestao(id, nota),
+    onSuccess: (_, nota) => {
+      setMinhaAvaliacao(nota)
+      queryClient.invalidateQueries(['questao', id])
+      toast.success('Avaliação registrada!')
+    },
+  })
+
+  const mutarFavorito = useMutation({
+    mutationFn: () => toggleFavorito(id, favoritoId),
+    onSuccess: (novoId) => {
+      setFavoritoId(novoId)
+      queryClient.invalidateQueries(['favoritos'])
+      toast.success(novoId ? 'Adicionado aos favoritos' : 'Removido dos favoritos')
+    },
+  })
+
+  if (isLoading) return <div className={styles.loading}>Carregando questão...</div>
+  if (!questao) return <div className={styles.loading}>Questão não encontrada.</div>
+
+  const StatusIcon = STATUS_CONFIG[questao.status]?.icon ?? Clock
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.topbar}>
+        <button className={styles.btnBack} onClick={() => navigate('/questoes')}>
+          <ChevronLeft size={16} /> Voltar
+        </button>
+        <div className={styles.topbarAcoes}>
+          <button className={`${styles.favBtn} ${favoritoId ? styles.favOn : ''}`}
+            onClick={() => mutarFavorito.mutate()}
+            title={favoritoId ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}>
+            <Heart size={15} /> {favoritoId ? 'Favoritado' : 'Favoritar'}
+          </button>
+          <button className={styles.btnSecondary} onClick={() => navigate(`/questoes/${id}/editar`)}>
+            <Pencil size={14} /> Editar
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.grid}>
+        <div className={styles.colMain}>
+          {/* Cabeçalho */}
+          <div className={styles.card}>
+            <div className={styles.badgeRow}>
+              <span className={`${styles.badge} ${styles['tipo_' + questao.tipo]}`}>
+                {questao.tipo === 'multipla_escolha' ? 'Múltipla escolha' : 'Dissertativa'}
+              </span>
+              <span className={`${styles.badge} ${styles['status_' + questao.status]}`}>
+                <StatusIcon size={11} /> {STATUS_CONFIG[questao.status]?.label}
+              </span>
+              {questao.disciplinas && <span className={styles.badgeGray}>{questao.disciplinas.nome}</span>}
+              {questao.ano_escolar && <span className={styles.badgeGray}>{questao.ano_escolar}</span>}
+            </div>
+            <h1 className={styles.titulo}>{questao.titulo}</h1>
+            <div className={styles.meta}>
+              <span>Por {questao.perfis?.nome}</span>
+              <span>·</span>
+              <span>{new Date(questao.criado_em).toLocaleDateString('pt-BR')}</span>
+              {questao.fonte && <><span>·</span><span>Fonte: {questao.fonte}</span></>}
+            </div>
+          </div>
+
+          {/* Enunciado */}
+          <div className={styles.card}>
+            <p className={styles.secTitulo}>Enunciado</p>
+            <div className={styles.enunciado}
+              dangerouslySetInnerHTML={{ __html: questao.enunciado }} />
+          </div>
+
+          {/* Alternativas */}
+          {questao.tipo === 'multipla_escolha' && questao.alternativas?.length > 0 && (
+            <div className={styles.card}>
+              <p className={styles.secTitulo}>Alternativas</p>
+              <div className={styles.alternativas}>
+                {questao.alternativas.map(alt => (
+                  <div key={alt.id}
+                    className={`${styles.altItem} ${alt.correta ? styles.altCorreta : ''}`}>
+                    <span className={`${styles.altLetra} ${alt.correta ? styles.altLetraCorreta : ''}`}>
+                      {alt.letra}
+                    </span>
+                    <span dangerouslySetInnerHTML={{ __html: alt.texto }} />
+                    {alt.correta && <CheckCircle size={14} className={styles.checkIcon} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Gabarito dissertativo */}
+          {questao.tipo === 'dissertativa' && questao.gabarito && (
+            <div className={styles.card}>
+              <p className={styles.secTitulo}>Gabarito</p>
+              <div className={styles.gabarito}
+                dangerouslySetInnerHTML={{ __html: questao.gabarito.texto }} />
+              {questao.gabarito.criterios && (
+                <>
+                  <p className={styles.secTitulo} style={{marginTop:14}}>Critérios de correção</p>
+                  <p className={styles.gabCriterios}>{questao.gabarito.criterios}</p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Comentário pedagógico */}
+          {questao.comentario_pedagogico && (
+            <div className={styles.card}>
+              <p className={styles.secTitulo}>Comentário pedagógico</p>
+              <p className={styles.comentarioPed}>{questao.comentario_pedagogico}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Lateral */}
+        <div className={styles.colSide}>
+
+          {/* Ações de aprovação */}
+          {podeAprovar && (
+            <div className={styles.card}>
+              <p className={styles.secTitulo}>Fluxo de aprovação</p>
+              <div className={styles.aprovacaoAcoes}>
+                {questao.status === 'em_revisao' && (
+                  <>
+                    <button className={styles.btnAprovar}
+                      onClick={() => mutarStatus.mutate({ status: 'publicado' })}>
+                      <CheckCircle size={14} /> Publicar
+                    </button>
+                    <button className={styles.btnRejeitar}
+                      onClick={() => {
+                        const motivo = window.prompt('Motivo da rejeição:')
+                        if (motivo) mutarStatus.mutate({ status: 'rascunho', justificativa: motivo })
+                      }}>
+                      <XCircle size={14} /> Rejeitar
+                    </button>
+                  </>
+                )}
+                {questao.status === 'publicado' && (
+                  <button className={styles.btnSecondary}
+                    onClick={() => mutarStatus.mutate({ status: 'arquivado' })}>
+                    <Archive size={14} /> Arquivar
+                  </button>
+                )}
+                {questao.status === 'rascunho' && (
+                  <button className={styles.btnAprovar}
+                    onClick={() => mutarStatus.mutate({ status: 'em_revisao' })}>
+                    <Clock size={14} /> Enviar para revisão
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Avaliação */}
+          <div className={styles.card}>
+            <p className={styles.secTitulo}>Avaliação</p>
+            <div className={styles.estrelasRow}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} className={styles.estBtn}
+                  onClick={() => mutarAvaliacao.mutate(n)}
+                  title={`Avaliar com ${n} estrela(s)`}>
+                  <Star size={22}
+                    className={n <= minhaAvaliacao ? styles.estOn : styles.estOff} />
+                </button>
+              ))}
+            </div>
+            {questao.media_avaliacao && (
+              <p className={styles.mediaAval}>
+                Média: {questao.media_avaliacao.toFixed(1)} ({questao.total_avaliacoes} avaliação{questao.total_avaliacoes !== 1 ? 'ões' : ''})
+              </p>
+            )}
+          </div>
+
+          {/* Habilidades */}
+          {questao.habilidades?.length > 0 && (
+            <div className={styles.card}>
+              <p className={styles.secTitulo}>Habilidades</p>
+              <div className={styles.habilidades}>
+                {questao.habilidades.map(h => (
+                  <div key={h.id} className={styles.habilidadeItem}>
+                    <span className={styles.habilidadeCodigo}>{h.codigo}</span>
+                    <span className={styles.habilidadeDesc}>{h.descricao}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Dificuldade */}
+          <div className={styles.card}>
+            <p className={styles.secTitulo}>Dificuldade</p>
+            <div className={styles.dificuldade}>
+              {Array.from({length:5}).map((_,i) => (
+                <span key={i} className={i < (questao.nivel_dificuldade ?? 0) ? styles.dotOn : styles.dotOff} />
+              ))}
+              <span className={styles.difLabel}>
+                {['','Muito fácil','Fácil','Médio','Difícil','Muito difícil'][questao.nivel_dificuldade ?? 0]}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

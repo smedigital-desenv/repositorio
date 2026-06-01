@@ -1,0 +1,137 @@
+/* Questoes.module.css */
+.page { padding: 0; }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+.titulo { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.subtitulo { font-size: 13px; color: var(--text-tertiary); }
+
+.btnPrimary {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500; font-family: var(--font-sans);
+  cursor: pointer; white-space: nowrap;
+}
+.btnPrimary:hover { background: var(--color-primary-dark); }
+
+.searchBar { display: flex; gap: 8px; margin-bottom: 10px; }
+.searchWrap { position: relative; flex: 1; }
+.searchIcon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none; }
+.searchInput {
+  width: 100%; padding: 9px 12px 9px 32px;
+  font-size: 13px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-surface); color: var(--text-primary); outline: none;
+}
+.searchInput:focus { border-color: var(--color-primary); }
+
+.btnFiltro {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 12px; font-size: 13px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-surface); color: var(--text-secondary); cursor: pointer;
+  white-space: nowrap;
+}
+.btnFiltro:hover { background: var(--bg-subtle); }
+.btnFiltroAtivo { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: var(--color-primary-mid); }
+
+.filtrosPanel {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 14px; background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+}
+.filtroSelect {
+  padding: 7px 10px; font-size: 12px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-surface); color: var(--text-primary); outline: none; cursor: pointer;
+}
+.btnLimpar {
+  padding: 7px 12px; font-size: 12px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.btnLimpar:hover { background: var(--bg-subtle); }
+
+.loading { text-align: center; padding: 64px; color: var(--text-tertiary); font-size: 13px; }
+
+.vazio {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 80px 24px;
+  color: var(--text-tertiary);
+}
+.vazio p { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+
+.lista { display: flex; flex-direction: column; gap: 8px; }
+
+.card {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border-default); }
+
+.cardTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+.cardBadges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: var(--radius-full); }
+.tipo_multipla_escolha { background: var(--color-info-bg);    color: var(--color-info); }
+.tipo_dissertativa     { background: #FAEEDA; color: #854F0B; }
+.status_rascunho       { background: var(--bg-subtle); color: var(--text-tertiary); }
+.status_em_revisao     { background: #FAEEDA; color: #854F0B; }
+.status_aprovado       { background: var(--color-info-bg); color: var(--color-info); }
+.status_publicado      { background: var(--color-success-bg); color: var(--color-success); }
+.status_arquivado      { background: var(--bg-subtle); color: var(--text-tertiary); }
+
+.badgeDisc { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-secondary); }
+.badgeGray { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-tertiary); }
+
+.cardAcoes { display: flex; gap: 4px; flex-shrink: 0; }
+.iconBtn {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-tertiary); cursor: pointer;
+}
+.iconBtn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+
+.cardTitulo {
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  margin-bottom: 6px; cursor: pointer; line-height: 1.4;
+}
+.cardTitulo:hover { color: var(--color-primary); }
+
+.cardEnunciado {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+  margin-bottom: 10px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cardEnunciado p { margin: 0; }
+
+.habilidades { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.habilidadeTag {
+  font-size: 10px; font-weight: 500; padding: 2px 7px;
+  border-radius: 4px; background: var(--color-primary-light); color: var(--color-primary-dark);
+}
+
+.cardFooter {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 10px; border-top: 1px solid var(--border-subtle);
+}
+.estrelas { display: flex; gap: 1px; }
+.estOn  { color: #EF9F27; fill: #EF9F27; }
+.estOff { color: var(--border-default); }
+.totalAval { font-size: 11px; color: var(--text-tertiary); }
+
+.dificuldade { display: flex; gap: 2px; align-items: center; }
+.dotOn  { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-primary); }
+.dotOff { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--border-default); }
+
+.footerSep { flex: 1; }
+.autor { font-size: 11px; color: var(--text-tertiary); }
+.data  { font-size: 11px; color: var(--text-tertiary); }

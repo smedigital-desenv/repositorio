@@ -3,6 +3,8 @@ import AppLayout from './components/layout/AppLayout'
 import RotaProtegida from './components/layout/RotaProtegida'
 import Login from './pages/auth/Login'
 import Questoes from './pages/questoes/Questoes'
+import QuestaoForm from './pages/questoes/QuestaoForm'
+import QuestaoDetalhe from './pages/questoes/QuestaoDetalhe'
 import Planos from './pages/planos/Planos'
 import Materiais from './pages/materiais/Materiais'
 import Provas from './pages/provas/Provas'
@@ -18,44 +20,32 @@ import Perfil from './pages/perfil/Perfil'
 const base = import.meta.env.BASE_URL
 
 const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <Login />,
-  },
+  { path: '/login', element: <Login /> },
   {
     path: '/',
-    element: (
-      <RotaProtegida>
-        <AppLayout />
-      </RotaProtegida>
-    ),
+    element: <RotaProtegida><AppLayout /></RotaProtegida>,
     children: [
       { index: true, element: <Navigate to="/questoes" replace /> },
-      { path: 'questoes',   element: <Questoes /> },
-      { path: 'planos',     element: <Planos /> },
-      { path: 'materiais',  element: <Materiais /> },
-      { path: 'provas',     element: <Provas /> },
-      { path: 'matriz',     element: <Matriz /> },
-      { path: 'colecoes',   element: <Colecoes /> },
-      { path: 'favoritos',  element: <Favoritos /> },
-      { path: 'relatorios', element: <Relatorios /> },
-      { path: 'cobertura',  element: <Cobertura /> },
-      { path: 'perfil',     element: <Perfil /> },
+      { path: 'questoes',              element: <Questoes /> },
+      { path: 'questoes/nova',         element: <QuestaoForm /> },
+      { path: 'questoes/:id',          element: <QuestaoDetalhe /> },
+      { path: 'questoes/:id/editar',   element: <QuestaoForm /> },
+      { path: 'planos',                element: <Planos /> },
+      { path: 'materiais',             element: <Materiais /> },
+      { path: 'provas',                element: <Provas /> },
+      { path: 'matriz',                element: <Matriz /> },
+      { path: 'colecoes',              element: <Colecoes /> },
+      { path: 'favoritos',             element: <Favoritos /> },
+      { path: 'relatorios',            element: <Relatorios /> },
+      { path: 'cobertura',             element: <Cobertura /> },
+      { path: 'perfil',                element: <Perfil /> },
       {
         path: 'revisao',
-        element: (
-          <RotaProtegida papeis={['formador', 'administrador']}>
-            <Revisao />
-          </RotaProtegida>
-        ),
+        element: <RotaProtegida papeis={['formador','administrador']}><Revisao /></RotaProtegida>,
       },
       {
         path: 'usuarios',
-        element: (
-          <RotaProtegida papeis={['formador', 'administrador']}>
-            <Usuarios />
-          </RotaProtegida>
-        ),
+        element: <RotaProtegida papeis={['formador','administrador']}><Usuarios /></RotaProtegida>,
       },
       {
         path: 'sem-permissao',
@@ -68,10 +58,7 @@ const router = createBrowserRouter([
       },
     ],
   },
-  {
-    path: '*',
-    element: <Navigate to="/" replace />,
-  },
+  { path: '*', element: <Navigate to="/" replace /> },
 ], { basename: base })
 
 export default function AppRouter() {
