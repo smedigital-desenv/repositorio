@@ -1,0 +1,110 @@
+/* ============================================================
+   REPOSITÓRIO PEDAGÓGICO MUNICIPAL — Estilos Globais
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Cores institucionais */
+  --color-primary:        #1D9E75;
+  --color-primary-dark:   #0F6E56;
+  --color-primary-light:  #E1F5EE;
+  --color-primary-mid:    #9FE1CB;
+
+  /* Semânticas */
+  --color-success:        #3B6D11;
+  --color-success-bg:     #EAF3DE;
+  --color-warning:        #854F0B;
+  --color-warning-bg:     #FAEEDA;
+  --color-danger:         #A32D2D;
+  --color-danger-bg:      #FCEBEB;
+  --color-info:           #185FA5;
+  --color-info-bg:        #E6F1FB;
+
+  /* Superfícies */
+  --bg-page:              #F5F4F0;
+  --bg-surface:           #FFFFFF;
+  --bg-subtle:            #F1EFE8;
+
+  /* Texto */
+  --text-primary:         #1A1A18;
+  --text-secondary:       #5F5E5A;
+  --text-tertiary:        #888780;
+  --text-inverse:         #FFFFFF;
+
+  /* Bordas */
+  --border-subtle:        rgba(0,0,0,0.08);
+  --border-default:       rgba(0,0,0,0.12);
+  --border-strong:        rgba(0,0,0,0.20);
+
+  /* Tipografia */
+  --font-sans:            'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:            'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Espaçamentos */
+  --radius-sm:            4px;
+  --radius-md:            8px;
+  --radius-lg:            12px;
+  --radius-xl:            16px;
+  --radius-full:          9999px;
+
+  /* Layout */
+  --sidebar-width:        224px;
+  --topbar-height:        56px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* Links */
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Foco acessível */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Utilitários básicos */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
