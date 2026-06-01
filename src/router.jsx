@@ -12,8 +12,9 @@ import Favoritos from './pages/favoritos/Favoritos'
 import Relatorios from './pages/relatorios/Relatorios'
 import Cobertura from './pages/cobertura/Cobertura'
 import Revisao from './pages/revisao/Revisao'
+import Usuarios from './pages/usuarios/Usuarios'
+import Perfil from './pages/perfil/Perfil'
 
-// Base URL para GitHub Pages
 const base = import.meta.env.BASE_URL
 
 const router = createBrowserRouter([
@@ -39,11 +40,22 @@ const router = createBrowserRouter([
       { path: 'favoritos',  element: <Favoritos /> },
       { path: 'relatorios', element: <Relatorios /> },
       { path: 'cobertura',  element: <Cobertura /> },
-      { path: 'revisao',    element: (
+      { path: 'perfil',     element: <Perfil /> },
+      {
+        path: 'revisao',
+        element: (
           <RotaProtegida papeis={['formador', 'administrador']}>
             <Revisao />
           </RotaProtegida>
-        )
+        ),
+      },
+      {
+        path: 'usuarios',
+        element: (
+          <RotaProtegida papeis={['formador', 'administrador']}>
+            <Usuarios />
+          </RotaProtegida>
+        ),
       },
       {
         path: 'sem-permissao',
