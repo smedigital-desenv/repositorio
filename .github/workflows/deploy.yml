@@ -40,25 +40,8 @@ jobs:
           VITE_APP_NAME: Repositorio Pedagogico Municipal
         run: npm run build
 
-    - name: Criar 404.html para React Router
-  run: |
-    cat > dist/404.html << 'EOF'
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Repositório Pedagógico Municipal</title>
-        <script>
-          var path = window.location.pathname;
-          var base = '/repositorio';
-          var route = path.replace(base, '') || '/';
-          sessionStorage.setItem('redirect', route);
-          window.location.replace(base + '/');
-        </script>
-      </head>
-      <body></body>
-    </html>
-    EOF
+      - name: Copiar index.html como 404.html
+        run: cp dist/index.html dist/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
