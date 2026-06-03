@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { uploadImagem } from '../services/upload'
 import { Image, Bold, Italic, List, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -8,114 +8,87 @@ const CATEGORIAS = [
   {
     nome: 'Operações',
     itens: [
-      { label: '×', insert: '×' },
-      { label: '÷', insert: '÷' },
-      { label: '±', insert: '±' },
-      { label: '√', insert: '√' },
-      { label: '∛', insert: '∛' },
-      { label: '∜', insert: '∜' },
+      { label: '×', insert: '×' }, { label: '÷', insert: '÷' },
+      { label: '±', insert: '±' }, { label: '√', insert: '√' },
+      { label: '∛', insert: '∛' }, { label: '∜', insert: '∜' },
     ],
   },
   {
     nome: 'Comparação',
     itens: [
-      { label: '≠', insert: '≠' },
-      { label: '≤', insert: '≤' },
-      { label: '≥', insert: '≥' },
-      { label: '≈', insert: '≈' },
-      { label: '∝', insert: '∝' },
+      { label: '≠', insert: '≠' }, { label: '≤', insert: '≤' },
+      { label: '≥', insert: '≥' }, { label: '≈', insert: '≈' },
     ],
   },
   {
     nome: 'Frações',
     itens: [
-      { label: '½', insert: '½' },
-      { label: '⅓', insert: '⅓' },
-      { label: '⅔', insert: '⅔' },
-      { label: '¼', insert: '¼' },
-      { label: '¾', insert: '¾' },
-      { label: '⅕', insert: '⅕' },
+      { label: '½', insert: '½' }, { label: '⅓', insert: '⅓' },
+      { label: '⅔', insert: '⅔' }, { label: '¼', insert: '¼' },
+      { label: '¾', insert: '¾' }, { label: '⅕', insert: '⅕' },
     ],
   },
   {
     nome: 'Potência / Índice',
     itens: [
-      { label: 'x²', insert: 'x²' },
-      { label: 'x³', insert: 'x³' },
-      { label: '²', insert: '²' },
-      { label: '³', insert: '³' },
-      { label: 'xₙ', insert: 'xₙ' },
-      { label: '₁', insert: '₁' },
-      { label: '₂', insert: '₂' },
+      { label: 'x²', insert: '²' }, { label: 'x³', insert: '³' },
+      { label: '²', insert: '²' }, { label: '³', insert: '³' },
+      { label: '₁', insert: '₁' }, { label: '₂', insert: '₂' },
+      { label: '₃', insert: '₃' },
     ],
   },
   {
     nome: 'Geometria',
     itens: [
-      { label: '°', insert: '°' },
-      { label: 'π', insert: 'π' },
-      { label: '∠', insert: '∠' },
-      { label: '△', insert: '△' },
-      { label: '⊥', insert: '⊥' },
-      { label: '∥', insert: '∥' },
+      { label: '°', insert: '°' }, { label: 'π', insert: 'π' },
+      { label: '∠', insert: '∠' }, { label: '△', insert: '△' },
+      { label: '⊥', insert: '⊥' }, { label: '∥', insert: '∥' },
       { label: '∞', insert: '∞' },
     ],
   },
   {
     nome: 'Conjuntos',
     itens: [
-      { label: '∈', insert: '∈' },
-      { label: '∉', insert: '∉' },
-      { label: '⊂', insert: '⊂' },
-      { label: '⊃', insert: '⊃' },
-      { label: '∪', insert: '∪' },
-      { label: '∩', insert: '∩' },
+      { label: '∈', insert: '∈' }, { label: '∉', insert: '∉' },
+      { label: '⊂', insert: '⊂' }, { label: '⊃', insert: '⊃' },
+      { label: '∪', insert: '∪' }, { label: '∩', insert: '∩' },
       { label: '∅', insert: '∅' },
     ],
   },
   {
     nome: 'Cálculo',
     itens: [
-      { label: '∑', insert: '∑' },
-      { label: '∫', insert: '∫' },
-      { label: '∂', insert: '∂' },
-      { label: '∆', insert: '∆' },
-      { label: '∇', insert: '∇' },
-      { label: 'lim', insert: 'lim' },
+      { label: '∑', insert: '∑' }, { label: '∫', insert: '∫' },
+      { label: '∂', insert: '∂' }, { label: '∆', insert: '∆' },
+      { label: '∇', insert: '∇' }, { label: 'lim', insert: 'lim' },
     ],
   },
   {
     nome: 'Letras Gregas',
     itens: [
-      { label: 'α', insert: 'α' },
-      { label: 'β', insert: 'β' },
-      { label: 'γ', insert: 'γ' },
-      { label: 'δ', insert: 'δ' },
-      { label: 'λ', insert: 'λ' },
-      { label: 'μ', insert: 'μ' },
-      { label: 'σ', insert: 'σ' },
-      { label: 'θ', insert: 'θ' },
-      { label: 'φ', insert: 'φ' },
-      { label: 'ω', insert: 'ω' },
+      { label: 'α', insert: 'α' }, { label: 'β', insert: 'β' },
+      { label: 'γ', insert: 'γ' }, { label: 'δ', insert: 'δ' },
+      { label: 'λ', insert: 'λ' }, { label: 'μ', insert: 'μ' },
+      { label: 'σ', insert: 'σ' }, { label: 'θ', insert: 'θ' },
+      { label: 'φ', insert: 'φ' }, { label: 'ω', insert: 'ω' },
     ],
   },
 ]
 
-export default function RichEditor({ value = '', onChange, label = '', placeholder = '' }) {
+// compact = true → modo alternativa (menor, sem lista/negrito)
+export default function RichEditor({ value = '', onChange, label = '', placeholder = '', compact = false }) {
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const [mostraSimbolos, setMostraSimbolos] = useState(false)
   const [uploading, setUploading] = useState(false)
   const lastSelection = useRef(null)
 
-  // Inicializar o conteúdo
   useEffect(() => {
     if (editorRef.current && value && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value
     }
   }, [])
 
-  // Salvar seleção antes de clicar em símbolos
   function salvarSelecao() {
     const sel = window.getSelection()
     if (sel && sel.rangeCount > 0) {
@@ -123,17 +96,13 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
     }
   }
 
-  // Inserir texto/HTML na posição do cursor
   function inserirNoEditor(texto) {
     editorRef.current?.focus()
     const sel = window.getSelection()
-
-    // Restaurar seleção salva
     if (lastSelection.current) {
       sel.removeAllRanges()
       sel.addRange(lastSelection.current)
     }
-
     if (sel && sel.rangeCount > 0) {
       const range = sel.getRangeAt(0)
       range.deleteContents()
@@ -149,22 +118,18 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
     onChange(editorRef.current.innerHTML)
   }
 
-  // Inserir imagem via URL
   function inserirImagem(url) {
     editorRef.current?.focus()
-    const img = `<img src="${url}" style="max-width:100%;height:auto;margin:8px 0;border-radius:6px;" />`
-
+    const img = `<img src="${url}" style="max-width:100%;height:auto;margin:6px 0;border-radius:6px;display:block;" />`
     const sel = window.getSelection()
     if (lastSelection.current) {
       sel.removeAllRanges()
       sel.addRange(lastSelection.current)
     }
-
     document.execCommand('insertHTML', false, img)
     onChange(editorRef.current.innerHTML)
   }
 
-  // Upload de imagem
   async function handleUploadImagem(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -181,7 +146,6 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
     }
   }
 
-  // Formatar texto selecionado
   function formatar(comando) {
     editorRef.current?.focus()
     document.execCommand(comando, false)
@@ -193,30 +157,35 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${compact ? styles.containerCompact : ''}`}>
       {label && <label className={styles.label}>{label}</label>}
 
       {/* Barra de formatação */}
-      <div className={styles.formatBar}>
-        <button type="button" className={styles.fmtBtn} onClick={() => formatar('bold')} title="Negrito">
-          <Bold size={14} />
-        </button>
-        <button type="button" className={styles.fmtBtn} onClick={() => formatar('italic')} title="Itálico">
-          <Italic size={14} />
-        </button>
-        <button type="button" className={styles.fmtBtn} onClick={() => formatar('insertUnorderedList')} title="Lista">
-          <List size={14} />
-        </button>
-        <div className={styles.sep} />
+      <div className={`${styles.formatBar} ${compact ? styles.formatBarCompact : ''}`}>
+        {!compact && (
+          <>
+            <button type="button" className={styles.fmtBtn} onClick={() => formatar('bold')} title="Negrito">
+              <Bold size={13} />
+            </button>
+            <button type="button" className={styles.fmtBtn} onClick={() => formatar('italic')} title="Itálico">
+              <Italic size={13} />
+            </button>
+            <button type="button" className={styles.fmtBtn} onClick={() => formatar('insertUnorderedList')} title="Lista">
+              <List size={13} />
+            </button>
+            <div className={styles.sep} />
+          </>
+        )}
+
         <button
           type="button"
           className={`${styles.fmtBtn} ${styles.fmtBtnSymbols} ${mostraSimbolos ? styles.ativo : ''}`}
           onMouseDown={salvarSelecao}
           onClick={() => setMostraSimbolos(v => !v)}
         >
-          Σ Símbolos {mostraSimbolos ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          Σ {!compact && 'Símbolos'} {mostraSimbolos ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
         </button>
-        <div className={styles.sep} />
+
         <button
           type="button"
           className={`${styles.fmtBtn} ${uploading ? styles.fmtBtnDisabled : ''}`}
@@ -225,8 +194,9 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
           title="Inserir imagem"
           disabled={uploading}
         >
-          <Image size={14} /> {uploading ? 'Enviando...' : 'Imagem'}
+          <Image size={13} /> {!compact && (uploading ? 'Enviando...' : 'Imagem')}
         </button>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -236,22 +206,19 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
         />
       </div>
 
-      {/* Painel de símbolos por categoria */}
+      {/* Painel de símbolos */}
       {mostraSimbolos && (
-        <div className={styles.symbolsPanel}>
+        <div className={`${styles.symbolsPanel} ${compact ? styles.symbolsPanelCompact : ''}`}>
           {CATEGORIAS.map(cat => (
             <div key={cat.nome} className={styles.symbolCat}>
               <span className={styles.catNome}>{cat.nome}</span>
               <div className={styles.catItens}>
                 {cat.itens.map(s => (
                   <button
-                    key={s.insert}
+                    key={s.insert + s.label}
                     type="button"
                     className={styles.symbolBtn}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      salvarSelecao()
-                    }}
+                    onMouseDown={(e) => { e.preventDefault(); salvarSelecao() }}
                     onClick={() => inserirNoEditor(s.insert)}
                     title={s.label}
                   >
@@ -264,10 +231,10 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
         </div>
       )}
 
-      {/* Editor */}
+      {/* Área de edição */}
       <div
         ref={editorRef}
-        className={styles.editor}
+        className={`${styles.editor} ${compact ? styles.editorCompact : ''}`}
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
