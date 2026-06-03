@@ -1,0 +1,92 @@
+/* ProvaDetalhe.module.css */
+.page { padding: 0; }
+.loading { text-align: center; padding: 64px; color: var(--text-tertiary); font-size: 13px; }
+
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.btnBack {
+  display: flex; align-items: center; gap: 4px; padding: 7px 12px;
+  font-size: 13px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.btnBack:hover { background: var(--bg-subtle); }
+
+.topbarAcoes { display: flex; gap: 8px; margin-left: auto; }
+.btnSecondary {
+  display: flex; align-items: center; gap: 5px; padding: 7px 12px;
+  font-size: 13px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.btnSecondary:hover { background: var(--bg-subtle); }
+
+/* Conteúdo para tela e impressão */
+.container {
+  background: white; color: black;
+  padding: 40px; border-radius: var(--radius-lg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header { margin-bottom: 40px; text-align: center; }
+.titulo { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
+.descricao { font-size: 14px; color: #555; margin: 0 0 16px; }
+.meta { display: flex; justify-content: center; gap: 24px; font-size: 13px; margin-bottom: 20px; }
+.meta span { }
+.meta strong { }
+
+.instrucoes {
+  background: #f5f5f5; padding: 14px;
+  border-left: 3px solid #1D9E75; border-radius: 4px;
+  margin-top: 16px;
+}
+.instrTitulo { font-size: 12px; font-weight: 600; color: #1D9E75; margin: 0 0 8px; text-transform: uppercase; }
+.instrucoes p { font-size: 13px; color: #333; margin: 0; line-height: 1.6; }
+
+/* Questões */
+.questoes { }
+.vazio { text-align: center; padding: 48px; color: #999; font-size: 13px; }
+
+.questao {
+  margin-bottom: 32px;
+  page-break-inside: avoid;
+}
+
+.qNum { font-size: 14px; font-weight: 700; color: #333; margin: 0 0 8px; }
+
+.enunciado {
+  font-size: 13px; color: #333; line-height: 1.7;
+  margin-bottom: 12px;
+}
+.enunciado p { margin: 0 0 8px; }
+.enunciado p:last-child { margin: 0; }
+
+.alternativas { margin-left: 20px; }
+.altItem { font-size: 13px; color: #333; margin-bottom: 6px; line-height: 1.5; }
+.altLetra { font-weight: 600; }
+
+.espacoResposta {
+  font-size: 13px; color: #333; line-height: 1.8;
+  margin-left: 20px; margin-top: 12px;
+  border-bottom: 1px solid #ddd; padding-bottom: 40px;
+}
+
+.printFooter {
+  margin-top: 60px; padding-top: 20px; border-top: 2px solid #333;
+  font-size: 12px; color: #333; text-align: center;
+}
+
+/* Impressão */
+@media print {
+  body, html { margin: 0; padding: 0; background: white; }
+  .topbar { display: none; }
+  .container { box-shadow: none; padding: 20px; }
+  .questao { page-break-inside: avoid; }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .container { padding: 20px; }
+  .header { margin-bottom: 24px; }
+  .titulo { font-size: 18px; }
+  .meta { flex-direction: column; gap: 8px; }
+}
