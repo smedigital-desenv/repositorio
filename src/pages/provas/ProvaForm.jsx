@@ -17,7 +17,8 @@ export default function ProvaForm() {
   const navigate = useNavigate()
   const { usuario } = useAuth()
   const queryClient = useQueryClient()
-  const isEdicao = !!id
+const isEdicao = !!id
+const podeEditar = usuario?.perfil === 'admin' || usuario?.perfil === 'coordenador'
 
   const [form, setForm] = useState({
     titulo: '', descricao: '', disciplina_id: '', ano_escolar: '', instrucoes: '', visibilidade: 'pessoal'
