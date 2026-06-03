@@ -1,4 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { listarProvas } from '../../services/provas'
+import { adicionarQuestaoProva } from '../../services/questoes'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buscarQuestao, mudarStatus, avaliarQuestao, toggleFavorito, listarFavoritos, registrarVisualizacao } from '../../services/questoes'
 import { useAuth } from '../../contexts/AuthContext'
@@ -23,6 +25,8 @@ export default function QuestaoDetalhe() {
   const podeAprovar = isFormador || isAdmin
   const [minhaAvaliacao, setMinhaAvaliacao] = useState(0)
   const [favoritoId, setFavoritoId] = useState(null)
+  const [modalProva, setModalProva] = useState(false)
+  const [provaSelecionada, setProvaSelecionada] = useState(null)
 
   const { data: questao, isLoading } = useQuery({
     queryKey: ['questao', id],
@@ -32,6 +36,24 @@ export default function QuestaoDetalhe() {
   const { data: favoritos = [] } = useQuery({
     queryKey: ['favoritos'],
     queryFn: listarFavoritos,
+  })
+
+  const { data: provas = [] } = useQuery({
+    queryKey: ['provas'],
+    queryFn: () => listarProvas({}),
+  })
+
+  const addAProva = useMutation({
+    mutationFn: () => {
+      if (!provaSelecionada) throw new Error('Selecione uma prova')
+      return adicionarQuestaoProva(provaSelecionada, id)
+    },
+    onSuccess: () => {
+      setModalProva(false)
+      setProvaSelecionada(null)
+      toast.success('Questão adicionada à prova!')
+    },
+    onError: (err) => toast.error(err.message),
   })
 
   useEffect(() => {
@@ -93,6 +115,9 @@ export default function QuestaoDetalhe() {
             onClick={() => mutarFavorito.mutate()}
             title={favoritoId ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}>
             <Heart size={15} /> {favoritoId ? 'Favoritado' : 'Favoritar'}
+          </button>
+          <button className={styles.btnSecondary} onClick={() => setModalProva(true)}>
+            + Adicionar à prova
           </button>
           <button className={styles.btnSecondary} onClick={() => navigate(`/questoes/${id}/editar`)}>
             <Pencil size={14} /> Editar
@@ -261,6 +286,34 @@ export default function QuestaoDetalhe() {
           </div>
         </div>
       </div>
+
+      {/* Modal adicionar à prova */}
+      {modalProva && (
+        <div className={styles.modalOverlay} onClick={() => setModalProva(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitulo}>Adicionar a uma prova</h3>
+            <p className={styles.modalSub}>Selecione qual prova receberá esta questão:</p>
+            <div className={styles.provasList}>
+              {provas.length === 0 ? (
+                <p className={styles.vazioModal}>Nenhuma prova criada ainda.</p>
+              ) : provas.map(p => (
+                <button key={p.id}
+                  className={`${styles.provaItem} ${provaSelecionada === p.id ? styles.provaItemOn : ''}`}
+                  onClick={() => setProvaSelecionada(p.id)}>
+                  <span>{p.titulo}</span>
+                  <span className={styles.provaSub}>{p.disciplinas?.nome} • {p.ano_escolar}</span>
+                </button>
+              ))}
+            </div>
+            <div className={styles.modalBotoes}>
+              <button className={styles.btnCancel} onClick={() => setModalProva(false)}>Cancelar</button>
+              <button className={styles.btnConfirm}
+                onClick={() => addAProva.mutate()}
+                disabled={addAProva.isPending || !provaSelecionada}>
+                {addAProva.isPending ? 'Adicionando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
-}
