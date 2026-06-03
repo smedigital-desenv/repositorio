@@ -248,3 +248,25 @@ export async function registrarVisualizacao(questaoId) {
     questao_id: questaoId,
   })
 }
+
+export async function adicionarQuestaoProva(provaId, questaoId) {
+  // Obter próxima ordem
+  const { data: maxOrdem } = await supabase
+    .from('prova_questoes')
+    .select('ordem')
+    .eq('prova_id', provaId)
+    .order('ordem', { ascending: false })
+    .limit(1)
+    .single()
+  
+  const novaOrdem = (maxOrdem?.ordem ?? -1) + 1
+  
+  // Inserir questão na prova
+  const { error } = await supabase.from('prova_questoes').insert({
+    prova_id: provaId,
+    questao_id: questaoId,
+    ordem: novaOrdem,
+  })
+  
+  if (error) throw error
+}
