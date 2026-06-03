@@ -6,6 +6,7 @@ import {
   listarDisciplinas, listarHabilidades
 } from '../../services/questoes'
 import { useAuth } from '../../contexts/AuthContext'
+import RichEditor from '../../components/RichEditor'
 import { Plus, Trash2, ChevronLeft, Save, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import styles from './QuestaoForm.module.css'
@@ -159,14 +160,13 @@ export default function QuestaoForm() {
             />
           </div>
 
-          {/* Enunciado */}
+          {/* Enunciado com Editor Avançado */}
           <div className={styles.card}>
-            <label className={styles.label}>Enunciado *</label>
-            <textarea className={styles.textarea}
+            <RichEditor
+              label="Enunciado *"
               placeholder="Digite o enunciado da questão..."
               value={form.enunciado}
-              onChange={e => setForm(f => ({...f, enunciado: e.target.value}))}
-              rows={6}
+              onChange={(html) => setForm(f => ({...f, enunciado: html}))}
             />
           </div>
 
@@ -221,32 +221,29 @@ export default function QuestaoForm() {
               </div>
             ) : (
               <div className={styles.gabarito}>
-                <label className={styles.label}>Gabarito / Resposta esperada</label>
-                <textarea className={styles.textarea}
+                <RichEditor
+                  label="Gabarito / Resposta esperada"
                   placeholder="Descreva a resposta esperada..."
                   value={gabarito.texto}
-                  onChange={e => setGabarito(g => ({...g, texto: e.target.value}))}
-                  rows={4}
+                  onChange={(html) => setGabarito(g => ({...g, texto: html}))}
                 />
-                <label className={styles.label} style={{marginTop: 12}}>Critérios de correção</label>
-                <textarea className={styles.textarea}
+                <RichEditor
+                  label="Critérios de correção"
                   placeholder="Critérios para avaliação da resposta..."
                   value={gabarito.criterios}
-                  onChange={e => setGabarito(g => ({...g, criterios: e.target.value}))}
-                  rows={3}
+                  onChange={(html) => setGabarito(g => ({...g, criterios: html}))}
                 />
               </div>
             )}
           </div>
 
-          {/* Comentário pedagógico */}
+          {/* Comentário pedagógico com Editor Avançado */}
           <div className={styles.card}>
-            <label className={styles.label}>Comentário pedagógico</label>
-            <textarea className={styles.textarea}
+            <RichEditor
+              label="Comentário pedagógico"
               placeholder="Observações para o professor sobre o uso desta questão..."
               value={form.comentario_pedagogico}
-              onChange={e => setForm(f => ({...f, comentario_pedagogico: e.target.value}))}
-              rows={3}
+              onChange={(html) => setForm(f => ({...f, comentario_pedagogico: html}))}
             />
           </div>
         </div>
