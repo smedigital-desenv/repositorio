@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   criarProva, atualizarProva, buscarProva,
   listarDisciplinas, listarQuestoesBuscaRapida
@@ -16,6 +16,7 @@ export default function ProvaForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { usuario } = useAuth()
+  const queryClient = useQueryClient()
   const isEdicao = !!id
 
   const [form, setForm] = useState({
@@ -66,6 +67,8 @@ export default function ProvaForm() {
       }
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries(['prova', data.id])
+      queryClient.invalidateQueries(['provas'])
       toast.success(isEdicao ? 'Prova atualizada!' : 'Prova criada!')
       navigate(`/provas/${data.id}`)
     },
