@@ -316,4 +316,5 @@ export default function QuestaoDetalhe() {
           </div>
         </div>
       )}
-    </div>
+    </div>  )
+}
