@@ -12,7 +12,9 @@ export async function listarQuestoes(filtros = {}) {
       questao_habilidades(
         habilidades(id, codigo, descricao)
       ),
-      avaliacoes(nota)
+      avaliacoes(nota),
+      questao_alternativas(id, letra, texto, correta, ordem),
+      questao_gabaritos(texto, criterios)
     `)
     .is('arquivado_em', null)
     .order('criado_em', { ascending: false })
@@ -39,6 +41,8 @@ export async function listarQuestoes(filtros = {}) {
       : null,
     total_avaliacoes: q.avaliacoes?.length ?? 0,
     habilidades: q.questao_habilidades?.map(qh => qh.habilidades) ?? [],
+    alternativas: q.questao_alternativas?.sort((a,b) => a.ordem - b.ordem) ?? [],
+    gabarito: q.questao_gabaritos?.[0] ?? null,
   }))
 }
 
