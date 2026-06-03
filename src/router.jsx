@@ -8,6 +8,8 @@ import QuestaoDetalhe from './pages/questoes/QuestaoDetalhe'
 import Planos from './pages/planos/Planos'
 import Materiais from './pages/materiais/Materiais'
 import Provas from './pages/provas/Provas'
+import ProvaForm from './pages/provas/ProvaForm'
+import ProvaDetalhe from './pages/provas/ProvaDetalhe'
 import Matriz from './pages/matriz/Matriz'
 import Colecoes from './pages/colecoes/Colecoes'
 import Favoritos from './pages/favoritos/Favoritos'
@@ -33,6 +35,9 @@ const router = createBrowserRouter([
       { path: 'planos',                element: <Planos /> },
       { path: 'materiais',             element: <Materiais /> },
       { path: 'provas',                element: <Provas /> },
+      { path: 'provas/nova',           element: <ProvaForm /> },
+      { path: 'provas/:id',            element: <ProvaDetalhe /> },
+      { path: 'provas/:id/editar',     element: <ProvaForm /> },
       { path: 'matriz',                element: <Matriz /> },
       { path: 'colecoes',              element: <Colecoes /> },
       { path: 'favoritos',             element: <Favoritos /> },
