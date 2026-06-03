@@ -200,12 +200,14 @@ export default function QuestaoForm() {
                       {alt.correta && <span className={styles.altRadioDot} />}
                     </button>
                     <span className={styles.altLetra}>{LETRAS[i]}</span>
-                    <input
-                      className={styles.altInput}
-                      placeholder={`Alternativa ${LETRAS[i]}`}
-                      value={alt.texto}
-                      onChange={e => setAlt(i, 'texto', e.target.value)}
-                    />
+                    <div className={styles.altEditorWrap}>
+                      <RichEditor
+                        compact
+                        placeholder={`Alternativa ${LETRAS[i]}`}
+                        value={alt.texto}
+                        onChange={(html) => setAlt(i, 'texto', html)}
+                      />
+                    </div>
                     {alternativas.length > 2 && (
                       <button className={styles.altRemove} onClick={() => removeAlternativa(i)} type="button">
                         <Trash2 size={13} />

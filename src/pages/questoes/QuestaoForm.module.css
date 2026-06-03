@@ -143,3 +143,7 @@
 .habilidadeItem input { margin-top: 2px; flex-shrink: 0; accent-color: var(--color-primary); }
 .habilidadeCodigo { font-weight: 600; color: var(--color-primary-dark); flex-shrink: 0; min-width: 72px; }
 .habilidadeDesc { color: var(--text-secondary); line-height: 1.4; }
+
+/* Editor nas alternativas */
+.altRow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.altEditorWrap { flex: 1; }
