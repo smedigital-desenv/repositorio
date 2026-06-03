@@ -13,9 +13,10 @@ export async function listarProvas(filtros = {}) {
     `)
     .order('criado_em', { ascending: false })
 
-  if (filtros.disciplina_id) query = query.eq('disciplina_id', filtros.disciplina_id)
-  if (filtros.autor_id) query = query.eq('autor_id', filtros.autor_id)
-  if (filtros.ano_escolar) query = query.eq('ano_escolar', filtros.ano_escolar)
+  if (filtros.disciplina_id)  query = query.eq('disciplina_id', filtros.disciplina_id)
+  if (filtros.autor_id)       query = query.eq('autor_id', filtros.autor_id)
+  if (filtros.ano_escolar)    query = query.eq('ano_escolar', filtros.ano_escolar)
+  if (filtros.visibilidade)   query = query.eq('visibilidade', filtros.visibilidade)
 
   const { data, error } = await query
 
