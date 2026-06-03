@@ -1,49 +1,27 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { listarQuestoes, listarDisciplinas } from '../../services/questoes'
+import { listarQuestoes, listarDisciplinas, adicionarQuestaoProva } from '../../services/questoes'
+import { listarProvas } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { Plus, Search, Filter, Star, BookOpen, ChevronDown, Eye, Pencil } from 'lucide-react'
+import { Plus, Search, Eye, Pencil, Trash2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 import styles from './Questoes.module.css'
 
 const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º ano','8º ano','9º ano']
-const STATUS_CONFIG = {
-  rascunho:   { label: 'Rascunho'   },
-  em_revisao: { label: 'Em revisão' },
-  aprovado:   { label: 'Aprovado'   },
-  publicado:  { label: 'Publicado'  },
-  arquivado:  { label: 'Arquivado'  },
-}
-const TIPO_CONFIG = {
-  multipla_escolha: { label: 'Múltipla escolha' },
-  dissertativa:     { label: 'Dissertativa'      },
-}
-
-function Estrelas({ valor }) {
-  return (
-    <div className={styles.estrelas}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} size={12} className={i < Math.round(valor ?? 0) ? styles.estOn : styles.estOff} />
-      ))}
-    </div>
-  )
-}
-
-function Dificuldade({ valor }) {
-  return (
-    <div className={styles.dificuldade}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={i < (valor ?? 0) ? styles.dotOn : styles.dotOff} />
-      ))}
-    </div>
-  )
-}
 
 export default function Questoes() {
   const navigate = useNavigate()
-  const [filtros, setFiltros] = useState({ status: 'publicado' })
+  const { isFormador, isAdmin } = useAuth()
+  const podeEditar = isFormador || isAdmin
+  const queryClient = useQueryClient()
+
+  const [filtros, setFiltros] = useState({})
   const [buscaTexto, setBuscaTexto] = useState('')
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [expandidas, setExpandidas] = useState(new Set())
+  const [questaoParaProva, setQuestaoParaProva] = useState(null)
+  const [provaSelected, setProvaSelected] = useState(null)
 
   const { data: questoes = [], isLoading } = useQuery({
     queryKey: ['questoes', filtros],
@@ -55,26 +33,56 @@ export default function Questoes() {
     queryFn: listarDisciplinas,
   })
 
+  const { data: provas = [] } = useQuery({
+    queryKey: ['provas'],
+    queryFn: () => listarProvas({}),
+  })
+
+  const addProva = useMutation({
+    mutationFn: async () => {
+      if (!provaSelected) throw new Error('Selecione uma prova')
+      await adicionarQuestaoProva(provaSelected, questaoParaProva.id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['provas'])
+      setQuestaoParaProva(null)
+      setProvaSelected(null)
+      toast.success('Questão adicionada à prova!')
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
   function setFiltro(key, val) {
     setFiltros(f => { const n = {...f}; if (val) n[key] = val; else delete n[key]; return n })
   }
 
+  function toggleExpandir(id) {
+    const novas = new Set(expandidas)
+    if (novas.has(id)) novas.delete(id)
+    else novas.add(id)
+    setExpandidas(novas)
+  }
+
   const questoesFiltradas = questoes.filter(q =>
-    !buscaTexto ||
-    q.titulo?.toLowerCase().includes(buscaTexto.toLowerCase()) ||
-    q.enunciado?.toLowerCase().includes(buscaTexto.toLowerCase())
+    !buscaTexto || q.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
   )
+
+  function listarDisciplinas() {
+    // Esta função não é usada - já importada acima
+  }
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.titulo}>Banco de Questões</h1>
-          <p className={styles.subtitulo}>{questoes.length} questões encontradas</p>
+          <p className={styles.subtitulo}>{questoes.length} questão(ões)</p>
         </div>
-        <button className={styles.btnPrimary} onClick={() => navigate('/questoes/nova')}>
-          <Plus size={15} /> Nova questão
-        </button>
+        {podeEditar && (
+          <button className={styles.btnPrimary} onClick={() => navigate('/questoes/nova')}>
+            <Plus size={15} /> Nova questão
+          </button>
+        )}
       </div>
 
       <div className={styles.searchBar}>
@@ -82,7 +90,7 @@ export default function Questoes() {
           <Search size={15} className={styles.searchIcon} />
           <input
             className={styles.searchInput}
-            placeholder="Buscar por título ou enunciado..."
+            placeholder="Buscar por título..."
             value={buscaTexto}
             onChange={e => setBuscaTexto(e.target.value)}
           />
@@ -92,41 +100,28 @@ export default function Questoes() {
           className={`${styles.btnFiltro} ${mostrarFiltros ? styles.btnFiltroAtivo : ''}`}
           onClick={() => setMostrarFiltros(v => !v)}
         >
-          <Filter size={14} /> Filtros <ChevronDown size={13} />
+          Filtros <ChevronDown size={13} />
         </button>
       </div>
 
       {mostrarFiltros && (
         <div className={styles.filtrosPanel}>
-          <select className={styles.filtroSelect} value={filtros.status ?? ''}
-            onChange={e => setFiltro('status', e.target.value)}>
-            <option value="">Todos os status</option>
-            {Object.entries(STATUS_CONFIG).map(([val, { label }]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </select>
-          <select className={styles.filtroSelect} value={filtros.tipo ?? ''}
-            onChange={e => setFiltro('tipo', e.target.value)}>
-            <option value="">Todos os tipos</option>
-            <option value="multipla_escolha">Múltipla escolha</option>
-            <option value="dissertativa">Dissertativa</option>
-          </select>
           <select className={styles.filtroSelect} value={filtros.disciplina_id ?? ''}
             onChange={e => setFiltro('disciplina_id', e.target.value)}>
             <option value="">Todas as disciplinas</option>
             {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
           </select>
+          <select className={styles.filtroSelect} value={filtros.status ?? ''}
+            onChange={e => setFiltro('status', e.target.value)}>
+            <option value="">Todos os status</option>
+            <option value="rascunho">Rascunho</option>
+            <option value="em_revisao">Em revisão</option>
+            <option value="publicado">Publicado</option>
+          </select>
           <select className={styles.filtroSelect} value={filtros.ano_escolar ?? ''}
             onChange={e => setFiltro('ano_escolar', e.target.value)}>
             <option value="">Todos os anos</option>
             {ANOS.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <select className={styles.filtroSelect} value={filtros.dificuldade ?? ''}
-            onChange={e => setFiltro('dificuldade', e.target.value ? Number(e.target.value) : '')}>
-            <option value="">Qualquer dificuldade</option>
-            {[1,2,3,4,5].map(n => (
-              <option key={n} value={n}>{n} — {['Muito fácil','Fácil','Médio','Difícil','Muito difícil'][n-1]}</option>
-            ))}
           </select>
           <button className={styles.btnLimpar}
             onClick={() => { setFiltros({}); setBuscaTexto('') }}>
@@ -139,70 +134,117 @@ export default function Questoes() {
         <div className={styles.loading}>Carregando questões...</div>
       ) : questoesFiltradas.length === 0 ? (
         <div className={styles.vazio}>
-          <BookOpen size={36} strokeWidth={1.5} />
+          <Search size={36} strokeWidth={1.5} />
           <p>Nenhuma questão encontrada</p>
-          <button className={styles.btnPrimary} onClick={() => navigate('/questoes/nova')}>
-            <Plus size={14} /> Criar primeira questão
-          </button>
         </div>
       ) : (
         <div className={styles.lista}>
-          {questoesFiltradas.map(q => (
-            <div key={q.id} className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={styles.cardBadges}>
-                  <span className={`${styles.badge} ${styles['tipo_' + q.tipo]}`}>
-                    {TIPO_CONFIG[q.tipo]?.label}
-                  </span>
-                  <span className={`${styles.badge} ${styles['status_' + q.status]}`}>
-                    {STATUS_CONFIG[q.status]?.label}
-                  </span>
-                  {q.disciplinas && (
-                    <span className={styles.badgeDisc}>
-                      {q.disciplinas.nome}
-                    </span>
-                  )}
-                  {q.ano_escolar && (
-                    <span className={styles.badgeGray}>{q.ano_escolar}</span>
-                  )}
-                </div>
-                <div className={styles.cardAcoes}>
-                  <button className={styles.iconBtn} onClick={() => navigate(`/questoes/${q.id}`)} title="Ver">
-                    <Eye size={15} />
+          {questoesFiltradas.map(q => {
+            const expandida = expandidas.has(q.id)
+            return (
+              <div key={q.id} className={styles.questaoCard}>
+                <div className={styles.cardHeader}>
+                  <button className={styles.expandBtn} onClick={() => toggleExpandir(q.id)}>
+                    {expandida ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
-                  <button className={styles.iconBtn} onClick={() => navigate(`/questoes/${q.id}/editar`)} title="Editar">
-                    <Pencil size={15} />
-                  </button>
+                  <div className={styles.cardInfo} onClick={() => navigate(`/questoes/${q.id}`)}>
+                    <h3 className={styles.cardTitulo}>{q.titulo}</h3>
+                    <div className={styles.cardMeta}>
+                      {q.disciplinas && <span className={styles.badge}>{q.disciplinas.nome}</span>}
+                      {q.ano_escolar && <span className={styles.badge}>{q.ano_escolar}</span>}
+                      {q.tipo === 'multipla_escolha' ? (
+                        <span className={styles.badge}>Múltipla escolha</span>
+                      ) : (
+                        <span className={styles.badge}>Dissertativa</span>
+                      )}
+                      <span className={`${styles.badge} ${styles.statusBadge} ${styles[`status_${q.status}`]}`}>
+                        {q.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={styles.cardAcoes}>
+                    {podeEditar && (
+                      <button className={styles.iconBtn} onClick={() => navigate(`/questoes/${q.id}/editar`)} title="Editar">
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    <button className={styles.iconBtn} onClick={() => navigate(`/questoes/${q.id}`)} title="Ver">
+                      <Eye size={15} />
+                    </button>
+                  </div>
                 </div>
+
+                {expandida && (
+                  <div className={styles.cardExpanded}>
+                    <div className={styles.enunciado}>
+                      <p className={styles.label}>Enunciado:</p>
+                      <div dangerouslySetInnerHTML={{ __html: q.enunciado }} />
+                    </div>
+
+                    {q.tipo === 'multipla_escolha' && q.alternativas?.length > 0 && (
+                      <div className={styles.alternativas}>
+                        <p className={styles.label}>Alternativas:</p>
+                        {q.alternativas.map(alt => (
+                          <div key={alt.id} className={`${styles.altItem} ${alt.correta ? styles.altCorreta : ''}`}>
+                            <span className={styles.altLetra}>{alt.letra})</span>
+                            <span dangerouslySetInnerHTML={{ __html: alt.texto }} />
+                            {alt.correta && <CheckCircle size={14} className={styles.checkIcon} />}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.gabarito && (
+                      <div className={styles.gabarito}>
+                        <p className={styles.label}>Gabarito:</p>
+                        <p>{q.gabarito.texto}</p>
+                      </div>
+                    )}
+
+                    {podeEditar && (
+                      <button className={styles.btnAddProva}
+                        onClick={() => setQuestaoParaProva(q)}>
+                        + Adicionar a uma prova
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
+            )
+          })}
+        </div>
+      )}
 
-              <h3 className={styles.cardTitulo} onClick={() => navigate(`/questoes/${q.id}`)}>
-                {q.titulo}
-              </h3>
-
-              <div className={styles.cardEnunciado}
-                dangerouslySetInnerHTML={{ __html: q.enunciado?.slice(0, 220) + (q.enunciado?.length > 220 ? '…' : '') }}
-              />
-
-              {q.habilidades?.length > 0 && (
-                <div className={styles.habilidades}>
-                  {q.habilidades.slice(0, 4).map(h => (
-                    <span key={h.id} className={styles.habilidadeTag} title={h.descricao}>{h.codigo}</span>
-                  ))}
-                  {q.habilidades.length > 4 && <span className={styles.habilidadeTag}>+{q.habilidades.length - 4}</span>}
-                </div>
+      {/* Modal para selecionar prova */}
+      {questaoParaProva && (
+        <div className={styles.modalOverlay} onClick={() => setQuestaoParaProva(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitulo}>Selecione uma prova</h3>
+            <p className={styles.modalSubtitulo}>Qual prova você quer adicionar esta questão?</p>
+            <div className={styles.provasList}>
+              {provas.length === 0 ? (
+                <p className={styles.vazioModal}>Nenhuma prova criada. <a href="/provas/nova">Criar prova</a></p>
+              ) : (
+                provas.map(p => (
+                  <button key={p.id} className={`${styles.provaItem} ${provaSelected === p.id ? styles.provaItemSelecionada : ''}`}
+                    onClick={() => setProvaSelected(p.id)}>
+                    <span>{p.titulo}</span>
+                    <span className={styles.provaSubtitle}>{p.disciplinas?.nome} • {p.ano_escolar}</span>
+                  </button>
+                ))
               )}
-
-              <div className={styles.cardFooter}>
-                <Dificuldade valor={q.nivel_dificuldade} />
-                <Estrelas valor={q.media_avaliacao} />
-                {q.total_avaliacoes > 0 && <span className={styles.totalAval}>({q.total_avaliacoes})</span>}
-                <span className={styles.footerSep} />
-                <span className={styles.autor}>{q.perfis?.nome}</span>
-                <span className={styles.data}>{new Date(q.criado_em).toLocaleDateString('pt-BR')}</span>
-              </div>
             </div>
-          ))}
+            <div className={styles.modalBotoes}>
+              <button className={styles.btnCancel} onClick={() => setQuestaoParaProva(null)}>
+                Cancelar
+              </button>
+              <button className={styles.btnConfirm}
+                onClick={() => addProva.mutate()}
+                disabled={addProva.isPending || !provaSelected}>
+                {addProva.isPending ? 'Adicionando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,13 +1,6 @@
-/* Questoes.module.css */
 .page { padding: 0; }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 16px;
-}
+.header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
 .titulo { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
 .subtitulo { font-size: 13px; color: var(--text-tertiary); }
 
@@ -70,27 +63,36 @@
 
 .lista { display: flex; flex-direction: column; gap: 8px; }
 
-.card {
+.questaoCard {
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg); padding: 16px 18px;
+  border-radius: var(--radius-lg); overflow: hidden;
   transition: border-color 0.15s;
 }
-.card:hover { border-color: var(--border-default); }
+.questaoCard:hover { border-color: var(--border-default); }
 
-.cardTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
-.cardBadges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cardHeader {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px; cursor: pointer;
+}
+.expandBtn {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-tertiary); cursor: pointer; flex-shrink: 0;
+}
+.expandBtn:hover { background: var(--bg-subtle); }
 
-.badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: var(--radius-full); }
-.tipo_multipla_escolha { background: var(--color-info-bg);    color: var(--color-info); }
-.tipo_dissertativa     { background: #FAEEDA; color: #854F0B; }
-.status_rascunho       { background: var(--bg-subtle); color: var(--text-tertiary); }
-.status_em_revisao     { background: #FAEEDA; color: #854F0B; }
-.status_aprovado       { background: var(--color-info-bg); color: var(--color-info); }
-.status_publicado      { background: var(--color-success-bg); color: var(--color-success); }
-.status_arquivado      { background: var(--bg-subtle); color: var(--text-tertiary); }
+.cardInfo { flex: 1; }
+.cardTitulo { font-size: 14px; font-weight: 500; color: var(--text-primary); margin: 0 0 6px; cursor: pointer; }
+.cardTitulo:hover { color: var(--color-primary); }
 
-.badgeDisc { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-secondary); }
-.badgeGray { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-tertiary); }
+.cardMeta { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-secondary); }
+.statusBadge {
+  font-weight: 500; color: white;
+}
+.status_rascunho { background: #999; }
+.status_em_revisao { background: #F59E0B; }
+.status_publicado { background: #10B981; }
 
 .cardAcoes { display: flex; gap: 4px; flex-shrink: 0; }
 .iconBtn {
@@ -100,38 +102,101 @@
 }
 .iconBtn:hover { background: var(--bg-subtle); color: var(--text-primary); }
 
-.cardTitulo {
-  font-size: 14px; font-weight: 500; color: var(--text-primary);
-  margin-bottom: 6px; cursor: pointer; line-height: 1.4;
-}
-.cardTitulo:hover { color: var(--color-primary); }
-
-.cardEnunciado {
-  font-size: 13px; color: var(--text-secondary); line-height: 1.5;
-  margin-bottom: 10px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.cardEnunciado p { margin: 0; }
-
-.habilidades { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
-.habilidadeTag {
-  font-size: 10px; font-weight: 500; padding: 2px 7px;
-  border-radius: 4px; background: var(--color-primary-light); color: var(--color-primary-dark);
+/* Expandida */
+.cardExpanded {
+  padding: 16px; border-top: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
 }
 
-.cardFooter {
-  display: flex; align-items: center; gap: 8px;
-  padding-top: 10px; border-top: 1px solid var(--border-subtle);
+.label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 0 0 10px; text-transform: uppercase; }
+
+.enunciado {
+  font-size: 13px; color: var(--text-primary); line-height: 1.6;
+  margin-bottom: 16px;
 }
-.estrelas { display: flex; gap: 1px; }
-.estOn  { color: #EF9F27; fill: #EF9F27; }
-.estOff { color: var(--border-default); }
-.totalAval { font-size: 11px; color: var(--text-tertiary); }
+.enunciado p { margin: 0 0 6px; }
 
-.dificuldade { display: flex; gap: 2px; align-items: center; }
-.dotOn  { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-primary); }
-.dotOff { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--border-default); }
+.alternativas { margin-bottom: 16px; }
+.altItem {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); font-size: 12px; color: var(--text-primary);
+  line-height: 1.5; margin-bottom: 6px;
+}
+.altCorreta { background: var(--color-success-bg); border-color: #C0DD97; }
+.altLetra { font-weight: 600; color: var(--text-secondary); width: 18px; flex-shrink: 0; }
+.altItem.altCorreta .altLetra { color: var(--color-success); }
+.checkIcon { color: var(--color-success); margin-left: auto; flex-shrink: 0; }
 
-.footerSep { flex: 1; }
-.autor { font-size: 11px; color: var(--text-tertiary); }
-.data  { font-size: 11px; color: var(--text-tertiary); }
+.gabarito {
+  font-size: 12px; color: var(--text-primary);
+  padding: 10px; background: var(--bg-surface); border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+.gabarito p { margin: 0; }
+
+.btnAddProva {
+  width: 100%; padding: 8px 12px;
+  font-size: 12px; font-weight: 500; font-family: var(--font-sans);
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius-md); cursor: pointer;
+}
+.btnAddProva:hover { background: var(--color-primary-dark); }
+
+/* Modal */
+.modalOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 24px;
+}
+
+.modal {
+  background: var(--bg-surface); border-radius: var(--radius-lg);
+  width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  padding: 20px;
+}
+
+.modalTitulo { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.modalSubtitulo { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+
+.provasList {
+  max-height: 280px; overflow-y: auto; margin-bottom: 14px;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+}
+
+.provaItem {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 100%; padding: 10px 12px;
+  text-align: left; border: none; background: transparent;
+  color: var(--text-primary); cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.provaItem:last-child { border-bottom: none; }
+.provaItem:hover { background: var(--bg-subtle); }
+.provaItemSelecionada { background: var(--color-primary-light); font-weight: 500; }
+
+.provaSubtitle { font-size: 11px; color: var(--text-tertiary); }
+
+.vazioModal {
+  text-align: center; padding: 24px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.vazioModal a { color: var(--color-primary); text-decoration: none; }
+.vazioModal a:hover { text-decoration: underline; }
+
+.modalBotoes { display: flex; gap: 8px; justify-content: flex-end; }
+
+.btnCancel {
+  padding: 8px 16px; font-size: 13px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.btnCancel:hover { background: var(--bg-subtle); }
+
+.btnConfirm {
+  padding: 8px 16px; font-size: 13px; font-weight: 500; font-family: var(--font-sans);
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius-md); cursor: pointer;
+}
+.btnConfirm:hover:not(:disabled) { background: var(--color-primary-dark); }
+.btnConfirm:disabled { opacity: 0.6; cursor: not-allowed; }
