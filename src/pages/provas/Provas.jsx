@@ -3,23 +3,31 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { listarProvas, listarDisciplinas } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { Plus, Search, Eye, Pencil, Trash2, FileText, ChevronDown } from 'lucide-react'
+import { Plus, Search, Eye, Pencil, FileText, ChevronDown, Users, Lock } from 'lucide-react'
 import styles from './Provas.module.css'
 
 const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º ano','8º ano','9º ano']
 
 export default function Provas() {
   const navigate = useNavigate()
-  const { isFormador, isAdmin } = useAuth()
+  const { usuario, isFormador, isAdmin } = useAuth()
   const podeEditar = isFormador || isAdmin
 
+  const [aba, setAba] = useState('minhas')       // 'minhas' | 'rede'
   const [filtros, setFiltros] = useState({})
   const [buscaTexto, setBuscaTexto] = useState('')
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
 
-  const { data: provas = [], isLoading } = useQuery({
-    queryKey: ['provas', filtros],
-    queryFn: () => listarProvas(filtros),
+  // Provas pessoais do usuário atual
+  const { data: minhasProvas = [], isLoading: loadingMinhas } = useQuery({
+    queryKey: ['provas', 'minhas', filtros],
+    queryFn: () => listarProvas({ ...filtros, visibilidade: 'pessoal', autor_id: usuario?.id }),
+  })
+
+  // Provas da rede (todas com visibilidade=rede)
+  const { data: provasRede = [], isLoading: loadingRede } = useQuery({
+    queryKey: ['provas', 'rede', filtros],
+    queryFn: () => listarProvas({ ...filtros, visibilidade: 'rede' }),
   })
 
   const { data: disciplinas = [] } = useQuery({
@@ -31,6 +39,9 @@ export default function Provas() {
     setFiltros(f => { const n = {...f}; if (val) n[key] = val; else delete n[key]; return n })
   }
 
+  const provas = aba === 'minhas' ? minhasProvas : provasRede
+  const isLoading = aba === 'minhas' ? loadingMinhas : loadingRede
+
   const provasFiltradas = provas.filter(p =>
     !buscaTexto || p.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
   )
@@ -40,15 +51,39 @@ export default function Provas() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.titulo}>Provas e Avaliações</h1>
-          <p className={styles.subtitulo}>{provas.length} prova(s) criada(s)</p>
+          <p className={styles.subtitulo}>{provasFiltradas.length} prova(s)</p>
         </div>
-        {podeEditar && (
-          <button className={styles.btnPrimary} onClick={() => navigate('/provas/nova')}>
-            <Plus size={15} /> Nova prova
-          </button>
-        )}
+        <button className={styles.btnPrimary} onClick={() => navigate('/provas/nova')}>
+          <Plus size={15} /> Nova prova
+        </button>
       </div>
 
+      {/* Abas */}
+      <div className={styles.abas}>
+        <button
+          className={`${styles.aba} ${aba === 'minhas' ? styles.abaAtiva : ''}`}
+          onClick={() => setAba('minhas')}
+        >
+          <Lock size={14} /> Minhas provas
+          <span className={styles.abaBadge}>{minhasProvas.length}</span>
+        </button>
+        <button
+          className={`${styles.aba} ${aba === 'rede' ? styles.abaAtiva : ''}`}
+          onClick={() => setAba('rede')}
+        >
+          <Users size={14} /> Provas da rede
+          <span className={styles.abaBadge}>{provasRede.length}</span>
+        </button>
+      </div>
+
+      {/* Descrição da aba */}
+      <p className={styles.abaDesc}>
+        {aba === 'minhas'
+          ? 'Provas criadas por você. Visíveis apenas para você.'
+          : 'Provas compartilhadas por formadores para toda a rede. Qualquer professor pode usar.'}
+      </p>
+
+      {/* Busca e filtros */}
       <div className={styles.searchBar}>
         <div className={styles.searchWrap}>
           <Search size={15} className={styles.searchIcon} />
@@ -87,17 +122,20 @@ export default function Provas() {
         </div>
       )}
 
+      {/* Lista */}
       {isLoading ? (
         <div className={styles.loading}>Carregando provas...</div>
       ) : provasFiltradas.length === 0 ? (
         <div className={styles.vazio}>
           <FileText size={36} strokeWidth={1.5} />
-          <p>Nenhuma prova encontrada</p>
-          {podeEditar && (
-            <button className={styles.btnPrimary} onClick={() => navigate('/provas/nova')}>
-              <Plus size={14} /> Criar primeira prova
-            </button>
-          )}
+          <p>
+            {aba === 'minhas'
+              ? 'Você ainda não criou nenhuma prova'
+              : 'Nenhuma prova da rede disponível'}
+          </p>
+          <button className={styles.btnPrimary} onClick={() => navigate('/provas/nova')}>
+            <Plus size={14} /> Criar prova
+          </button>
         </div>
       ) : (
         <div className={styles.lista}>
@@ -105,35 +143,41 @@ export default function Provas() {
             <div key={p.id} className={styles.card}>
               <div className={styles.cardTop}>
                 <div className={styles.cardInfo}>
-                  <h3 className={styles.cardTitulo} onClick={() => navigate(`/provas/${p.id}`)}>
-                    {p.titulo}
-                  </h3>
-                  <p className={styles.cardDesc}>{p.descricao?.slice(0, 100)}</p>
+                  <div className={styles.cardTituloRow}>
+                    <h3 className={styles.cardTitulo} onClick={() => navigate(`/provas/${p.id}`)}>
+                      {p.titulo}
+                    </h3>
+                    <span className={`${styles.tipoBadge} ${p.visibilidade === 'rede' ? styles.tipoRede : styles.tipoPessoal}`}>
+                      {p.visibilidade === 'rede'
+                        ? <><Users size={11} /> Rede</>
+                        : <><Lock size={11} /> Pessoal</>}
+                    </span>
+                  </div>
+                  {p.descricao && <p className={styles.cardDesc}>{p.descricao.slice(0, 100)}</p>}
                 </div>
-                {podeEditar && (
-                  <div className={styles.cardAcoes}>
-                    <button className={styles.iconBtn} onClick={() => navigate(`/provas/${p.id}`)} title="Ver">
-                      <Eye size={15} />
-                    </button>
+                <div className={styles.cardAcoes}>
+                  <button className={styles.iconBtn} onClick={() => navigate(`/provas/${p.id}`)} title="Ver">
+                    <Eye size={15} />
+                  </button>
+                  {/* Só autor ou admin pode editar */}
+                  {(p.autor_id === usuario?.id || isAdmin) && (
                     <button className={styles.iconBtn} onClick={() => navigate(`/provas/${p.id}/editar`)} title="Editar">
                       <Pencil size={15} />
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               <div className={styles.cardBadges}>
-                {p.disciplinas && (
-                  <span className={styles.badgeDisc}>{p.disciplinas.nome}</span>
-                )}
-                {p.ano_escolar && (
-                  <span className={styles.badgeGray}>{p.ano_escolar}</span>
-                )}
+                {p.disciplinas && <span className={styles.badgeDisc}>{p.disciplinas.nome}</span>}
+                {p.ano_escolar && <span className={styles.badgeGray}>{p.ano_escolar}</span>}
                 <span className={styles.badgeQuestoes}>{p.total_questoes} questões</span>
               </div>
 
               <div className={styles.cardFooter}>
-                <span className={styles.autor}>{p.perfis?.nome}</span>
+                <span className={styles.autor}>
+                  {p.visibilidade === 'rede' ? `Por ${p.perfis?.nome}` : 'Minha prova'}
+                </span>
                 <span className={styles.data}>{new Date(p.criado_em).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>

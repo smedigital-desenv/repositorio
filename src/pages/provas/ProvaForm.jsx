@@ -6,7 +6,7 @@ import {
   listarDisciplinas, listarQuestoesBuscaRapida
 } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { Plus, Trash2, ChevronLeft, Save, GripVertical } from 'lucide-react'
+import { Plus, Trash2, ChevronLeft, Save, GripVertical, Lock, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import styles from './ProvaForm.module.css'
 
@@ -20,7 +20,7 @@ export default function ProvaForm() {
   const isEdicao = !!id
 
   const [form, setForm] = useState({
-    titulo: '', descricao: '', disciplina_id: '', ano_escolar: '', instrucoes: ''
+    titulo: '', descricao: '', disciplina_id: '', ano_escolar: '', instrucoes: '', visibilidade: 'pessoal'
   })
   const [questoes, setQuestoes] = useState([])
   const [buscaTexto, setBuscaTexto] = useState('')
@@ -41,6 +41,7 @@ export default function ProvaForm() {
         disciplina_id: provaExistente.disciplina_id || '',
         ano_escolar: provaExistente.ano_escolar || '',
         instrucoes: provaExistente.instrucoes || '',
+        visibilidade: provaExistente.visibilidade || 'pessoal',
       })
       setQuestoes(provaExistente.questoes?.map(q => q.id) || [])
     }
@@ -190,6 +191,32 @@ export default function ProvaForm() {
               <option value="">Selecione...</option>
               {ANOS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
+          </div>
+
+          <div className={styles.card}>
+            <label className={styles.label}>Visibilidade</label>
+            <div className={styles.visibGroup}>
+              <button type="button"
+                className={`${styles.visibBtn} ${form.visibilidade === 'pessoal' ? styles.visibOn : ''}`}
+                onClick={() => setForm(f => ({...f, visibilidade: 'pessoal'}))}>
+                <Lock size={13} />
+                <div>
+                  <span className={styles.visibTitulo}>Pessoal</span>
+                  <span className={styles.visibDesc}>Só você tem acesso</span>
+                </div>
+              </button>
+              {podeEditar && (
+                <button type="button"
+                  className={`${styles.visibBtn} ${form.visibilidade === 'rede' ? styles.visibOn : ''}`}
+                  onClick={() => setForm(f => ({...f, visibilidade: 'rede'}))}>
+                  <Users size={13} />
+                  <div>
+                    <span className={styles.visibTitulo}>Rede</span>
+                    <span className={styles.visibDesc}>Todos os professores veem</span>
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className={styles.card}>
