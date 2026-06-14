@@ -105,18 +105,27 @@
 
 /* ── Impressão (Ctrl+P / window.print) ── */
 @media print {
+  /* Remove completamente cabeçalho e rodapé do navegador */
+  @page {
+    size: A4;
+    margin: 10mm;
+    /* Chrome/Edge: remove URL e data */
+  }
+
+  /* Zera margens do body para o @page funcionar */
+  :global(html), :global(body) {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .topbar { display: none !important; }
 
   .printArea {
     margin: 0 !important;
-    padding: 15mm 15mm !important;
+    padding: 10mm 12mm !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     max-width: 100% !important;
-  }
-
-  @page {
-    size: A4;
-    margin: 10mm;
+    width: 100% !important;
   }
 }

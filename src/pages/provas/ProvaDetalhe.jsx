@@ -23,7 +23,78 @@ export default function ProvaDetalhe() {
   }, [id])
 
   function handleImprimir() {
-    window.print()
+    const cfg = prova.cfg_impressao || {}
+    const fontSize = cfg.tamanhoFonte ? `${cfg.tamanhoFonte}pt` : '11pt'
+    const separador = cfg.separadorQuestoes !== false
+    const semQuebra = cfg.quebrarPagina !== false
+    const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
+
+    const questoesHtml = (prova.questoes || []).map((q, idx) => {
+      const alts = q.tipo === 'multipla_escolha' && q.alternativas?.length
+        ? q.alternativas.map(a =>
+            `<div style="display:flex;gap:8px;margin:3px 0;font-size:${fontSize}">
+              <span style="font-weight:700;min-width:18px">${a.letra})</span>
+              <span>${a.texto}</span>
+            </div>`
+          ).join('')
+        : q.tipo === 'dissertativa'
+          ? Array(4).fill('<div style="border-bottom:1px solid #888;height:18px;margin-bottom:10px"></div>').join('')
+          : ''
+
+      const dif = q.nivel_dificuldade
+        ? `<span style="font-size:9pt;color:#666;margin-left:8px">${'●'.repeat(q.nivel_dificuldade)}${'○'.repeat(5-q.nivel_dificuldade)}</span>`
+        : ''
+
+      const sep = separador && idx > 0
+        ? `<hr style="border:none;border-top:1px solid #ddd;margin:14px 0"/>`
+        : idx > 0 ? '<div style="margin-top:16px"></div>' : ''
+
+      return `${sep}
+        <div style="page-break-inside:${semQuebra ? 'avoid' : 'auto'}">
+          <p style="font-weight:700;font-size:${fontSize};margin:0 0 6px">
+            Questão ${idx + 1}${dif}
+          </p>
+          <div style="font-size:${fontSize};margin-bottom:8px">${q.enunciado}</div>
+          ${alts}
+        </div>`
+    }).join('')
+
+    const instrHtml = prova.instrucoes
+      ? `<div style="font-size:10pt;background:#f8f8f8;border-left:3px solid #999;padding:8px 12px;margin:10px 0">
+          <strong>Instruções:</strong> ${prova.instrucoes}
+        </div>`
+      : ''
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${prova.titulo}</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 0; color: #000; }
+    img { max-width: 100%; height: auto; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  ${cabecalhoHtml}
+  <h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>
+  ${instrHtml}
+  <div>${questoesHtml}</div>
+  <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
+    <span>Total: ${prova.questoes?.length || 0} questões</span>
+    <span>Assinatura: ___________________________</span>
+  </div>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print() }, 400)
   }
 
   if (isLoading) return <div className={styles.loading}>Carregando prova...</div>

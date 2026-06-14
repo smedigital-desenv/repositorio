@@ -25,6 +25,7 @@ export default function ProvaForm() {
     titulo: '', descricao: '', disciplina_id: '', disciplinas_ids: [], ano_escolar: '', instrucoes: '', visibilidade: 'pessoal', tipo_prova: 'disciplina'
   })
   const [cabecalho, setCabecalho] = useState(CABECALHO_PADRAO)
+  const [cabecalhoAberto, setCabecalhoAberto] = useState(false)
   const [cfgImpressao, setCfgImpressao] = useState({
     tamanhoFonte: 11,
     separadorQuestoes: true,
@@ -144,7 +145,7 @@ export default function ProvaForm() {
 
           <div className={styles.card}>
             <label className={styles.label}>Cabeçalho da prova</label>
-            <ProvaHeader key={provaExistente?.id ?? 'novo'} value={cabecalho} onChange={setCabecalho} />
+            <ProvaHeader value={cabecalho} onChange={setCabecalho} aberto={cabecalhoAberto} setAberto={setCabecalhoAberto} />
           </div>
 
           <div className={styles.card}>
