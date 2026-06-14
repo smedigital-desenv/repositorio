@@ -82,12 +82,17 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
   const [mostraSimbolos, setMostraSimbolos] = useState(false)
   const [uploading, setUploading] = useState(false)
   const lastSelection = useRef(null)
+  const isFocused = useRef(false)
 
+  // Sincroniza quando value chega de fora (ex: carregamento de questão para edição)
   useEffect(() => {
-    if (editorRef.current && value && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value
+    if (editorRef.current && !isFocused.current) {
+      const incoming = value ?? ''
+      if (editorRef.current.innerHTML !== incoming) {
+        editorRef.current.innerHTML = incoming
+      }
     }
-  }, [])
+  }, [value])
 
   function salvarSelecao() {
     const sel = window.getSelection()
@@ -241,6 +246,8 @@ export default function RichEditor({ value = '', onChange, label = '', placehold
         onMouseUp={salvarSelecao}
         onKeyUp={salvarSelecao}
         data-placeholder={placeholder}
+        onFocus={() => { isFocused.current = true }}
+        onBlur={() => { isFocused.current = false }}
       />
     </div>
   )
