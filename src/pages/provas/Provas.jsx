@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { listarProvas, listarDisciplinas } from '../../services/provas'
+import { listarProvas, listarDisciplinas, criarProva } from '../../services/provas'
+import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
-import { Plus, Search, Eye, Pencil, FileText, ChevronDown, Users, Lock } from 'lucide-react'
+import { Plus, Search, Eye, Pencil, FileText, ChevronDown, Users, Lock, Copy } from 'lucide-react'
 import styles from './Provas.module.css'
 
 const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º ano','8º ano','9º ano']
@@ -12,6 +13,31 @@ export default function Provas() {
   const navigate = useNavigate()
   const { usuario, isFormador, isAdmin } = useAuth()
   const podeEditar = isFormador || isAdmin
+  const queryClient = useQueryClient()
+
+  const copiarProva = useMutation({
+    mutationFn: async (prova) => {
+      const dados = {
+        titulo: `${prova.titulo} (cópia)`,
+        descricao: prova.descricao || null,
+        disciplina_id: prova.disciplina_id || null,
+        disciplinas_ids: prova.disciplinas_ids || [],
+        tipo_prova: prova.tipo_prova || 'disciplina',
+        ano_escolar: prova.ano_escolar || null,
+        instrucoes: prova.instrucoes || null,
+        visibilidade: 'pessoal',
+        cabecalho: prova.cabecalho || '',
+        cfg_impressao: prova.cfg_impressao || {},
+        autor_id: usuario.id,
+      }
+      return criarProva(dados, (prova.questoes_ids || []))
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['provas'])
+      toast.success('Prova copiada para "Minhas provas"!')
+    },
+    onError: (err) => toast.error('Erro ao copiar: ' + err.message),
+  })
 
   const [aba, setAba] = useState('minhas')       // 'minhas' | 'rede'
   const [filtros, setFiltros] = useState({})
@@ -163,6 +189,15 @@ export default function Provas() {
                   {(p.autor_id === usuario?.id || isAdmin) && (
                     <button className={styles.iconBtn} onClick={() => navigate(`/provas/${p.id}/editar`)} title="Editar">
                       <Pencil size={15} />
+                    </button>
+                  )}
+                  {/* Copiar prova da rede */}
+                  {aba === 'rede' && p.autor_id !== usuario?.id && (
+                    <button className={styles.iconBtn}
+                      onClick={() => copiarProva.mutate(p)}
+                      title="Copiar para minhas provas"
+                      disabled={copiarProva.isPending}>
+                      <Copy size={15} />
                     </button>
                   )}
                 </div>

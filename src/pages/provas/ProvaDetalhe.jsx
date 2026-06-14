@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { buscarProva, registrarUsoProva } from '../../services/provas'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { buscarProva, registrarUsoProva, criarProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Printer, Pencil, FileText } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil, FileText, Copy } from 'lucide-react'
 import { gerarWordProva } from '../../services/gerarWord'
 import { useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
@@ -14,6 +14,34 @@ export default function ProvaDetalhe() {
   const navigate = useNavigate()
   const { isFormador, isAdmin, usuario } = useAuth()
   const podeEditar = isFormador || isAdmin
+
+  const queryClient = useQueryClient()
+
+  const copiarProva = useMutation({
+    mutationFn: async () => {
+      const dados = {
+        titulo: `${prova.titulo} (cópia)`,
+        descricao: prova.descricao || null,
+        disciplina_id: prova.disciplina_id || null,
+        disciplinas_ids: prova.disciplinas_ids || [],
+        tipo_prova: prova.tipo_prova || 'disciplina',
+        ano_escolar: prova.ano_escolar || null,
+        instrucoes: prova.instrucoes || null,
+        visibilidade: 'pessoal',
+        cabecalho: prova.cabecalho || '',
+        cfg_impressao: prova.cfg_impressao || {},
+        autor_id: usuario.id,
+      }
+      const questaoIds = (prova.questoes || []).map(q => q.id)
+      return criarProva(dados, questaoIds)
+    },
+    onSuccess: (novaProva) => {
+      queryClient.invalidateQueries(['provas'])
+      toast.success('Cópia criada! Redirecionando para edição...')
+      setTimeout(() => navigate(`/provas/${novaProva.id}/editar`), 1200)
+    },
+    onError: (err) => toast.error('Erro ao copiar: ' + err.message),
+  })
 
   const { data: prova, isLoading } = useQuery({
     queryKey: ['prova', id],
@@ -141,6 +169,14 @@ export default function ProvaDetalhe() {
           <button className={styles.btnSecondary} onClick={handleWord}>
             <FileText size={14} /> Word
           </button>
+          {prova.visibilidade === 'rede' && prova.autor_id !== usuario?.id && (
+            <button className={styles.btnCopiar}
+              onClick={() => copiarProva.mutate()}
+              disabled={copiarProva.isPending}>
+              <Copy size={14} />
+              {copiarProva.isPending ? 'Copiando...' : 'Copiar para minhas provas'}
+            </button>
+          )}
           {(podeEditar || prova.autor_id === usuario?.id) && (
             <button className={styles.btnSecondary}
               onClick={() => navigate(`/provas/${id}/editar`)}>
