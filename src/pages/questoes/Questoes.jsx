@@ -113,21 +113,22 @@ export default function Questoes() {
       </div>
 
       {isProfessor && (
-        <div className={styles.abas}>
-          <button
-            className={`${styles.aba} ${aba === 'banco' ? styles.abaAtiva : ''}`}
-            onClick={() => setAba('banco')}>
-            Banco da rede
-            <span className={styles.abaBadge}>
-              {questoesPublicadas.filter(q => q.autor_id !== usuario?.id).length}
-            </span>
-          </button>
-          <button
-            className={`${styles.aba} ${aba === 'minhas' ? styles.abaAtiva : ''}`}
-            onClick={() => setAba('minhas')}>
-            Minhas questões
-            <span className={styles.abaBadge}>{questoesProprias.length}</span>
-          </button>
+        <>
+          <div className={styles.abas}>
+            <button
+              className={`${styles.aba} ${aba === 'banco' ? styles.abaAtiva : ''}`}
+              onClick={() => setAba('banco')}>
+              Banco da rede
+              <span className={styles.abaBadge}>
+                {questoesPublicadas.filter(q => q.autor_id !== usuario?.id).length}
+              </span>
+            </button>
+            <button
+              className={`${styles.aba} ${aba === 'minhas' ? styles.abaAtiva : ''}`}
+              onClick={() => setAba('minhas')}>
+              Minhas questões
+              <span className={styles.abaBadge}>{questoesProprias.length}</span>
+            </button>
           </div>
           <p className={styles.abaDesc}>
             {aba === 'banco'
