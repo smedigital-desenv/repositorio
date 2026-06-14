@@ -111,6 +111,23 @@ export default function QuestaoForm() {
     onError: (err) => toast.error(err.message || 'Erro ao salvar'),
   })
 
+  function handleAltTab(e, i) {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const proxima = document.querySelector(`[data-alt-index="${i + 1}"] [contenteditable]`)
+      if (proxima) {
+        e.preventDefault()
+        proxima.focus()
+      }
+    }
+    if (e.key === 'Tab' && e.shiftKey) {
+      const anterior = document.querySelector(`[data-alt-index="${i - 1}"] [contenteditable]`)
+      if (anterior) {
+        e.preventDefault()
+        anterior.focus()
+      }
+    }
+  }
+
   function setAlt(i, field, value) {
     setAlternativas(alts => alts.map((a, idx) =>
       idx === i
@@ -200,7 +217,7 @@ export default function QuestaoForm() {
                 <label className={styles.label}>Alternativas *</label>
                 <p className={styles.hint}>Marque a alternativa correta clicando no círculo.</p>
                 {alternativas.map((alt, i) => (
-                  <div key={i} className={styles.altRow}>
+                  <div key={i} className={styles.altRow} data-alt-index={i} onKeyDown={e => handleAltTab(e, i)}>
                     <button
                       className={`${styles.altRadio} ${alt.correta ? styles.altRadioOn : ''}`}
                       onClick={() => setAlt(i, 'correta', true)}
