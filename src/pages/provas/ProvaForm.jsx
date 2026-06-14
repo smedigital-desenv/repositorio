@@ -17,8 +17,7 @@ export default function ProvaForm() {
   const navigate = useNavigate()
   const { usuario } = useAuth()
   const queryClient = useQueryClient()
-const isEdicao = !!id
-const podeEditar = usuario?.perfil === 'admin' || usuario?.perfil === 'coordenador'
+  const isEdicao = !!id
 
   const [form, setForm] = useState({
     titulo: '', descricao: '', disciplina_id: '', ano_escolar: '', instrucoes: '', visibilidade: 'pessoal'
@@ -58,7 +57,6 @@ const podeEditar = usuario?.perfil === 'admin' || usuario?.perfil === 'coordenad
   const salvar = useMutation({
     mutationFn: async () => {
       if (!form.titulo.trim()) throw new Error('Título é obrigatório')
-      if (questoes.length === 0) throw new Error('Adicione pelo menos uma questão')
 
       const dados = { ...form, disciplina_id: form.disciplina_id || null, autor_id: usuario.id }
 
@@ -145,7 +143,7 @@ const podeEditar = usuario?.perfil === 'admin' || usuario?.perfil === 'coordenad
           <div className={styles.card}>
             <p className={styles.cardTitulo}>Questões selecionadas ({questoes.length})</p>
             {questoes.length === 0 ? (
-              <p className={styles.vazioQuestoes}>Nenhuma questão adicionada. Selecione à direita.</p>
+              <p className={styles.vazioQuestoes}>Nenhuma questão adicionada ainda. Você pode adicionar depois de salvar a prova.</p>
             ) : (
               <div className={styles.questoesList}>
                 {questoes.map((qId, idx) => {
