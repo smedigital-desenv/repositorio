@@ -64,9 +64,21 @@ export async function buscarProva(id) {
 // ── Criação / Edição ──────────────────────────────────────
 
 export async function criarProva(dados, questaoIds) {
+  const payload = {
+    titulo: dados.titulo,
+    descricao: dados.descricao || null,
+    disciplina_id: dados.disciplina_id || null,
+    disciplinas_ids: dados.disciplinas_ids || [],
+    tipo_prova: dados.tipo_prova || 'disciplina',
+    ano_escolar: dados.ano_escolar || null,
+    instrucoes: dados.instrucoes || null,
+    visibilidade: dados.visibilidade || 'pessoal',
+    cabecalho: dados.cabecalho || {},
+    autor_id: dados.autor_id,
+  }
   const { data: prova, error } = await supabase
     .from('provas')
-    .insert(dados)
+    .insert(payload)
     .select()
     .single()
 
@@ -80,9 +92,20 @@ export async function criarProva(dados, questaoIds) {
 }
 
 export async function atualizarProva(id, dados, questaoIds) {
+  const payload = {
+    titulo: dados.titulo,
+    descricao: dados.descricao || null,
+    disciplina_id: dados.disciplina_id || null,
+    disciplinas_ids: dados.disciplinas_ids || [],
+    tipo_prova: dados.tipo_prova || 'disciplina',
+    ano_escolar: dados.ano_escolar || null,
+    instrucoes: dados.instrucoes || null,
+    visibilidade: dados.visibilidade || 'pessoal',
+    cabecalho: dados.cabecalho || {},
+  }
   const { data: prova, error } = await supabase
     .from('provas')
-    .update(dados)
+    .update(payload)
     .eq('id', id)
     .select()
     .single()
