@@ -7,6 +7,7 @@ import {
 } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
 import { Plus, Trash2, ChevronLeft, Save, GripVertical, Lock, Users } from 'lucide-react'
+import ProvaHeader from '../../components/ProvaHeader'
 import toast from 'react-hot-toast'
 import styles from './ProvaForm.module.css'
 
@@ -21,8 +22,9 @@ export default function ProvaForm() {
   const isEdicao = !!id
 
   const [form, setForm] = useState({
-    titulo: '', descricao: '', disciplina_id: '', ano_escolar: '', instrucoes: '', visibilidade: 'pessoal'
+    titulo: '', descricao: '', disciplina_id: '', disciplinas_ids: [], ano_escolar: '', instrucoes: '', visibilidade: 'pessoal', tipo_prova: 'disciplina'
   })
+  const [cabecalho, setCabecalho] = useState({})
   const [questoes, setQuestoes] = useState([])
   const [buscaTexto, setBuscaTexto] = useState('')
   const [filtroDisc, setFiltroDisc] = useState('')
@@ -40,6 +42,8 @@ export default function ProvaForm() {
         titulo: provaExistente.titulo,
         descricao: provaExistente.descricao || '',
         disciplina_id: provaExistente.disciplina_id || '',
+        disciplinas_ids: provaExistente.disciplinas_ids || [],
+        tipo_prova: provaExistente.tipo_prova || 'disciplina',
         ano_escolar: provaExistente.ano_escolar || '',
         instrucoes: provaExistente.instrucoes || '',
         visibilidade: provaExistente.visibilidade || 'pessoal',
@@ -59,7 +63,7 @@ export default function ProvaForm() {
     mutationFn: async () => {
       if (!form.titulo.trim()) throw new Error('Título é obrigatório')
 
-      const dados = { ...form, disciplina_id: form.disciplina_id || null, autor_id: usuario.id }
+      const dados = { ...form, disciplina_id: form.tipo_prova === 'disciplina' ? (form.disciplina_id || null) : null, disciplinas_ids: form.tipo_prova === 'simulado' ? form.disciplinas_ids : [], autor_id: usuario.id, cabecalho }
 
       if (isEdicao) {
         return atualizarProva(id, dados, questoes)
@@ -129,6 +133,11 @@ export default function ProvaForm() {
               onChange={e => setForm(f => ({...f, descricao: e.target.value}))}
               rows={3}
             />
+          </div>
+
+          <div className={styles.card}>
+            <label className={styles.label}>Cabeçalho da prova</label>
+            <ProvaHeader value={cabecalho} onChange={setCabecalho} />
           </div>
 
           <div className={styles.card}>

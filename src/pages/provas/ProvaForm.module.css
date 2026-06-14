@@ -104,3 +104,21 @@
 .visibOn { background: var(--color-primary-light) !important; border-color: var(--color-primary) !important; color: var(--color-primary-dark) !important; }
 .visibTitulo { display: block; font-size: 13px; font-weight: 500; }
 .visibDesc { display: block; font-size: 11px; opacity: 0.75; margin-top: 1px; }
+
+/* Disciplinas múltiplas (simulado) */
+.disciplinasMulti { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+.disciplinaChip {
+  padding: 6px 13px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font-size: 13px; font-weight: 600;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer; transition: all 0.15s;
+}
+.disciplinaChip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.disciplinaChipOn {
+  background: var(--color-primary) !important;
+  color: white !important;
+  border-color: var(--color-primary) !important;
+}
