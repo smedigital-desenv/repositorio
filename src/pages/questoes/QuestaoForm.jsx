@@ -83,11 +83,12 @@ export default function QuestaoForm() {
   const salvar = useMutation({
     mutationFn: async (statusFinal) => {
       if (!form.titulo.trim()) throw new Error('Título é obrigatório')
-      if (!form.enunciado.trim()) throw new Error('Enunciado é obrigatório')
+      const textoEnunciado = form.enunciado.replace(/<[^>]*>/g, '').trim()
+      if (!textoEnunciado) throw new Error('Enunciado é obrigatório')
       if (form.tipo === 'multipla_escolha') {
         const temCorreta = alternativas.some(a => a.correta)
         if (!temCorreta) throw new Error('Marque pelo menos uma alternativa correta')
-        if (alternativas.some(a => !a.texto.trim())) throw new Error('Preencha todas as alternativas')
+        if (alternativas.some(a => !a.texto.replace(/<[^>]*>/g,'').trim())) throw new Error('Preencha todas as alternativas')
       }
 
       const dados = {
