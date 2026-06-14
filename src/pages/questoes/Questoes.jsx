@@ -12,7 +12,8 @@ const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º a
 
 export default function Questoes() {
   const navigate = useNavigate()
-  const { isFormador, isAdmin } = useAuth()
+  const { usuario, isFormador, isAdmin } = useAuth()
+  const isProfessor = !isFormador && !isAdmin
   const podeEditar = isFormador || isAdmin
   const queryClient = useQueryClient()
 
@@ -23,10 +24,31 @@ export default function Questoes() {
   const [questaoParaProva, setQuestaoParaProva] = useState(null)
   const [provaSelected, setProvaSelected] = useState(null)
 
-  const { data: questoes = [], isLoading } = useQuery({
-    queryKey: ['questoes', filtros],
-    queryFn: () => listarQuestoes(filtros),
+  // Professor vê: suas próprias questões + questões publicadas de outros
+  // Formador/Admin: veem tudo
+  const { data: questoesProprias = [], isLoading: loadProprias } = useQuery({
+    queryKey: ['questoes', 'proprias', filtros, usuario?.id],
+    queryFn: () => listarQuestoes({ ...filtros, autor_id: usuario?.id }),
+    enabled: !!usuario,
   })
+
+  const { data: questoesPublicadas = [], isLoading: loadPublicadas } = useQuery({
+    queryKey: ['questoes', 'publicadas', filtros],
+    queryFn: () => listarQuestoes({ ...filtros, status: 'publicado' }),
+    enabled: !!usuario,
+  })
+
+  // Mescla e deduplica: proprias + publicadas de outros
+  const questoes = isProfessor
+    ? [
+        ...questoesProprias,
+        ...questoesPublicadas.filter(q => q.autor_id !== usuario?.id),
+      ]
+    : questoesProprias.concat(questoesPublicadas).filter((q, i, arr) =>
+        arr.findIndex(x => x.id === q.id) === i
+      )
+
+  const isLoading = loadProprias || loadPublicadas
 
   const { data: disciplinas = [] } = useQuery({
     queryKey: ['disciplinas'],
@@ -52,6 +74,8 @@ export default function Questoes() {
     onError: (err) => toast.error(err.message),
   })
 
+  const [aba, setAba] = useState('banco')  // 'banco' | 'minhas'
+
   function setFiltro(key, val) {
     setFiltros(f => { const n = {...f}; if (val) n[key] = val; else delete n[key]; return n })
   }
@@ -63,9 +87,14 @@ export default function Questoes() {
     setExpandidas(novas)
   }
 
-  const questoesFiltradas = questoes.filter(q =>
-    !buscaTexto || q.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
-  )
+  const questoesFiltradas = questoes.filter(q => {
+    const textoOk = !buscaTexto || q.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
+    if (isProfessor) {
+      if (aba === 'minhas') return textoOk && q.autor_id === usuario?.id
+      return textoOk && q.status === 'publicado' && q.autor_id !== usuario?.id
+    }
+    return textoOk
+  })
 
   function listarDisciplinas() {
     // Esta função não é usada - já importada acima
@@ -78,12 +107,35 @@ export default function Questoes() {
           <h1 className={styles.titulo}>Banco de Questões</h1>
           <p className={styles.subtitulo}>{questoes.length} questão(ões)</p>
         </div>
-        {podeEditar && (
-          <button className={styles.btnPrimary} onClick={() => navigate('/questoes/nova')}>
-            <Plus size={15} /> Nova questão
-          </button>
-        )}
+        <button className={styles.btnPrimary} onClick={() => navigate('/questoes/nova')}>
+          <Plus size={15} /> Nova questão
+        </button>
       </div>
+
+      {isProfessor && (
+        <div className={styles.abas}>
+          <button
+            className={`${styles.aba} ${aba === 'banco' ? styles.abaAtiva : ''}`}
+            onClick={() => setAba('banco')}>
+            Banco da rede
+            <span className={styles.abaBadge}>
+              {questoesPublicadas.filter(q => q.autor_id !== usuario?.id).length}
+            </span>
+          </button>
+          <button
+            className={`${styles.aba} ${aba === 'minhas' ? styles.abaAtiva : ''}`}
+            onClick={() => setAba('minhas')}>
+            Minhas questões
+            <span className={styles.abaBadge}>{questoesProprias.length}</span>
+          </button>
+          </div>
+          <p className={styles.abaDesc}>
+            {aba === 'banco'
+              ? 'Questões validadas por formadores — disponíveis para todos.'
+              : 'Suas questões. Envie para revisão para que um formador possa publicá-las no banco.'}
+          </p>
+        </>
+      )}
 
       <div className={styles.searchBar}>
         <div className={styles.searchWrap}>
@@ -157,13 +209,16 @@ export default function Questoes() {
                       ) : (
                         <span className={styles.badge}>Dissertativa</span>
                       )}
-                      <span className={`${styles.badge} ${styles.statusBadge} ${styles[`status_${q.status}`]}`}>
-                        {q.status}
+                      <span className={`${styles.badge} ${styles.statusBadge} ${styles['status_' + q.status]}`}>
+                        {q.status === 'rascunho' ? '📝 Rascunho'
+                         : q.status === 'em_revisao' ? '🔍 Em revisão'
+                         : q.status === 'publicado' ? '✅ Publicado'
+                         : q.status}
                       </span>
                     </div>
                   </div>
                   <div className={styles.cardAcoes}>
-                    {podeEditar && (
+                    {(podeEditar || q.autor_id === usuario?.id) && (
                       <button className={styles.iconBtn} onClick={() => navigate(`/questoes/${q.id}/editar`)} title="Editar">
                         <Pencil size={15} />
                       </button>
@@ -201,7 +256,7 @@ export default function Questoes() {
                       </div>
                     )}
 
-                    {podeEditar && (
+                    {true && (
                       <button className={styles.btnAddProva}
                         onClick={() => setQuestaoParaProva(q)}>
                         + Adicionar a uma prova

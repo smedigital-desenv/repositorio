@@ -23,6 +23,8 @@ export default function QuestaoDetalhe() {
   const { usuario, isFormador, isAdmin } = useAuth()
   const queryClient = useQueryClient()
   const podeAprovar = isFormador || isAdmin
+  const isProfessor = !isFormador && !isAdmin
+  const ehAutor = questao?.autor_id === usuario?.id
   const [minhaAvaliacao, setMinhaAvaliacao] = useState(0)
   const [favoritoId, setFavoritoId] = useState(null)
   const [modalProva, setModalProva] = useState(false)
@@ -119,9 +121,11 @@ export default function QuestaoDetalhe() {
           <button className={styles.btnSecondary} onClick={() => setModalProva(true)}>
             + Adicionar à prova
           </button>
-          <button className={styles.btnSecondary} onClick={() => navigate(`/questoes/${id}/editar`)}>
-            <Pencil size={14} /> Editar
-          </button>
+          {(podeAprovar || (questao && questao.autor_id === usuario?.id)) && (
+            <button className={styles.btnSecondary} onClick={() => navigate(`/questoes/${id}/editar`)}>
+              <Pencil size={14} /> Editar
+            </button>
+          )}
         </div>
       </div>
 
@@ -201,39 +205,70 @@ export default function QuestaoDetalhe() {
         {/* Lateral */}
         <div className={styles.colSide}>
 
-          {/* Ações de aprovação */}
-          {podeAprovar && (
+          {/* Ações de aprovação — professor vê status e pode enviar para revisão */}
+          {(podeAprovar || questao.autor_id === usuario?.id) && (
             <div className={styles.card}>
               <p className={styles.secTitulo}>Fluxo de aprovação</p>
-              <div className={styles.aprovacaoAcoes}>
-                {questao.status === 'em_revisao' && (
-                  <>
+
+              {/* Professor: só pode enviar para revisão ou ver status */}
+              {questao.autor_id === usuario?.id && !podeAprovar && (
+                <div className={styles.aprovacaoAcoes}>
+                  {questao.status === 'rascunho' && (
+                    <>
+                      <p className={styles.aprovacaoInfo}>
+                        Esta questão está como rascunho. Envie para revisão para que um formador possa publicá-la no banco da rede.
+                      </p>
+                      <button className={styles.btnAprovar}
+                        onClick={() => mutarStatus.mutate({ status: 'em_revisao' })}>
+                        <Clock size={14} /> Enviar para revisão
+                      </button>
+                    </>
+                  )}
+                  {questao.status === 'em_revisao' && (
+                    <p className={styles.aprovacaoInfo} style={{color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'10px 12px'}}>
+                      🔍 Aguardando revisão de um formador.
+                    </p>
+                  )}
+                  {questao.status === 'publicado' && (
+                    <p className={styles.aprovacaoInfo} style={{color:'#047857',background:'#ecfdf5',border:'1px solid #bbf7d0',borderRadius:10,padding:'10px 12px'}}>
+                      ✅ Publicada no banco da rede! Disponível para todos os professores.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Formador/Admin: controle completo */}
+              {podeAprovar && (
+                <div className={styles.aprovacaoAcoes}>
+                  {questao.status === 'em_revisao' && (
+                    <>
+                      <button className={styles.btnAprovar}
+                        onClick={() => mutarStatus.mutate({ status: 'publicado' })}>
+                        <CheckCircle size={14} /> Publicar no banco da rede
+                      </button>
+                      <button className={styles.btnRejeitar}
+                        onClick={() => {
+                          const motivo = window.prompt('Motivo da rejeição:')
+                          if (motivo) mutarStatus.mutate({ status: 'rascunho', justificativa: motivo })
+                        }}>
+                        <XCircle size={14} /> Rejeitar (devolver ao professor)
+                      </button>
+                    </>
+                  )}
+                  {questao.status === 'publicado' && (
+                    <button className={styles.btnSecondary}
+                      onClick={() => mutarStatus.mutate({ status: 'arquivado' })}>
+                      <Archive size={14} /> Arquivar
+                    </button>
+                  )}
+                  {(questao.status === 'rascunho' || questao.status === 'arquivado') && (
                     <button className={styles.btnAprovar}
                       onClick={() => mutarStatus.mutate({ status: 'publicado' })}>
-                      <CheckCircle size={14} /> Publicar
+                      <CheckCircle size={14} /> Publicar diretamente
                     </button>
-                    <button className={styles.btnRejeitar}
-                      onClick={() => {
-                        const motivo = window.prompt('Motivo da rejeição:')
-                        if (motivo) mutarStatus.mutate({ status: 'rascunho', justificativa: motivo })
-                      }}>
-                      <XCircle size={14} /> Rejeitar
-                    </button>
-                  </>
-                )}
-                {questao.status === 'publicado' && (
-                  <button className={styles.btnSecondary}
-                    onClick={() => mutarStatus.mutate({ status: 'arquivado' })}>
-                    <Archive size={14} /> Arquivar
-                  </button>
-                )}
-                {questao.status === 'rascunho' && (
-                  <button className={styles.btnAprovar}
-                    onClick={() => mutarStatus.mutate({ status: 'em_revisao' })}>
-                    <Clock size={14} /> Enviar para revisão
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

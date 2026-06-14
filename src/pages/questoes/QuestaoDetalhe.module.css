@@ -152,3 +152,10 @@
 }
 .btnConfirm:hover:not(:disabled) { background: var(--color-primary-dark); }
 .btnConfirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.aprovacaoInfo {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
