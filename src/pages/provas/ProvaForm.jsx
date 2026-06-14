@@ -180,16 +180,60 @@ export default function ProvaForm() {
 
         <div className={styles.colSide}>
           <div className={styles.card}>
-            <label className={styles.label}>Disciplina</label>
-            <select className={styles.select}
-              value={form.disciplina_id}
-              onChange={e => {
-                setForm(f => ({...f, disciplina_id: e.target.value}))
-                setFiltroDisc(e.target.value)
-              }}>
-              <option value="">Selecione...</option>
-              {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-            </select>
+            <label className={styles.label}>Tipo de prova</label>
+            <div className={styles.switchGroup} style={{marginBottom: 10}}>
+              <button type="button"
+                className={`${styles.switchBtn} ${form.tipo_prova === 'disciplina' ? styles.switchBtnOn : ''}`}
+                onClick={() => setForm(f => ({...f, tipo_prova: 'disciplina', disciplinas_ids: []}))}>
+                📚 Disciplina única
+              </button>
+              <button type="button"
+                className={`${styles.switchBtn} ${form.tipo_prova === 'simulado' ? styles.switchBtnOn : ''}`}
+                onClick={() => setForm(f => ({...f, tipo_prova: 'simulado', disciplina_id: ''}))}>
+                🎯 Simulado
+              </button>
+            </div>
+
+            {form.tipo_prova === 'disciplina' ? (
+              <>
+                <label className={styles.label}>Disciplina</label>
+                <select className={styles.select}
+                  value={form.disciplina_id}
+                  onChange={e => {
+                    setForm(f => ({...f, disciplina_id: e.target.value}))
+                    setFiltroDisc(e.target.value)
+                  }}>
+                  <option value="">Selecione...</option>
+                  {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                </select>
+              </>
+            ) : (
+              <>
+                <label className={styles.label}>Disciplinas</label>
+                <div className={styles.disciplinasMulti}>
+                  {disciplinas.map(d => {
+                    const sel = (form.disciplinas_ids || []).includes(d.id)
+                    return (
+                      <button key={d.id} type="button"
+                        className={`${styles.disciplinaChip} ${sel ? styles.disciplinaChipOn : ''}`}
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          disciplinas_ids: sel
+                            ? f.disciplinas_ids.filter(x => x !== d.id)
+                            : [...(f.disciplinas_ids || []), d.id]
+                        }))}>
+                        {d.nome}
+                      </button>
+                    )
+                  })}
+                </div>
+                {(form.disciplinas_ids || []).length > 0 && (
+                  <p className={styles.hint} style={{marginTop: 6}}>
+                    {form.disciplinas_ids.length} disciplina(s) selecionada(s)
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div className={styles.card}>
