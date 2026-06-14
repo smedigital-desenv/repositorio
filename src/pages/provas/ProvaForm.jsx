@@ -49,6 +49,7 @@ export default function ProvaForm() {
         visibilidade: provaExistente.visibilidade || 'pessoal',
       })
       setQuestoes(provaExistente.questoes?.map(q => q.id) || [])
+      setCabecalho(provaExistente.cabecalho || {})
     }
   }, [provaExistente])
 
@@ -137,7 +138,7 @@ export default function ProvaForm() {
 
           <div className={styles.card}>
             <label className={styles.label}>Cabeçalho da prova</label>
-            <ProvaHeader value={cabecalho} onChange={setCabecalho} />
+            <ProvaHeader key={provaExistente?.id ?? 'novo'} value={cabecalho} onChange={setCabecalho} />
           </div>
 
           <div className={styles.card}>
