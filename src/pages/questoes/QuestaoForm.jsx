@@ -56,8 +56,18 @@ export default function QuestaoForm() {
         ano_escolar: questaoExistente.ano_escolar || '',
         status: questaoExistente.status,
       })
-      if (questaoExistente.alternativas?.length) setAlternativas(questaoExistente.alternativas)
-      if (questaoExistente.gabarito) setGabarito(questaoExistente.gabarito)
+      if (questaoExistente.alternativas?.length) {
+        const alts = questaoExistente.alternativas.map((a, i) => ({
+          letra: a.letra || LETRAS[i],
+          texto: a.texto || '',
+          correta: !!a.correta,
+        }))
+        setAlternativas(alts)
+      }
+      if (questaoExistente.gabarito) setGabarito({
+        texto: questaoExistente.gabarito.texto || '',
+        criterios: questaoExistente.gabarito.criterios || '',
+      })
       setHabilidadeIds(questaoExistente.habilidades?.map(h => h.id) || [])
     }
   }, [questaoExistente])
@@ -146,7 +156,7 @@ export default function QuestaoForm() {
         </div>
       </div>
 
-      <div className={styles.grid}>
+      <div className={styles.grid} key={questaoExistente?.id ?? 'novo'}>
         {/* Coluna principal */}
         <div className={styles.colMain}>
 
