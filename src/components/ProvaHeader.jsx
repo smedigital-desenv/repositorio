@@ -1,41 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
 import { uploadImagem } from '../services/upload'
-import { Image, AlignLeft, AlignCenter, AlignRight, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2, Image } from 'lucide-react'
 import toast from 'react-hot-toast'
 import styles from './ProvaHeader.module.css'
 
-const CORES_TEXTO = ['#002b5e','#1e293b','#0f172a','#1d4ed8','#047857','#b91c1c','#92400e','#6d28d9','#0891b2']
-const CORES_FUNDO = ['#ffffff','#f0f9ff','#f0fdf4','#fefce8','#fff1f2','#f5f3ff','#e0f2fe','#002b5e','#1e293b']
+export const CABECALHO_PADRAO = `<div style="text-align:center;padding:12px 0 6px">
+  <p style="font-size:11pt;font-weight:700;margin:0">PREFEITURA MUNICIPAL DE RIBEIRÃO PRETO</p>
+  <p style="font-size:10pt;margin:4px 0 0">SECRETARIA MUNICIPAL DE EDUCAÇÃO</p>
+  <p style="font-size:9pt;margin:6px 0 0">Professor(a): ________________________________&nbsp;&nbsp;&nbsp;Data: ___/___/_____</p>
+  <p style="font-size:9pt;margin:4px 0 0">Aluno(a): ____________________________________&nbsp;&nbsp;&nbsp;Nota: __________</p>
+</div>`
 
-const DEFAULTS = {
-  nomeProfessor: '',
-  nomeEscola: '',
-  logoUrl: '',
-  corFundo: '#ffffff',
-  corTexto: '#002b5e',
-  alinhamento: 'center',
-  mostrarData: true,
-  mostrarLinha: true,
-  negrito: false,
-}
-
-export default function ProvaHeader({ value = {}, onChange }) {
+export default function ProvaHeader({ value, onChange }) {
   const fileRef = useRef(null)
   const [aberto, setAberto] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [cfg, setCfg] = useState({ ...DEFAULTS, ...value })
+  const editorRef = useRef(null)
+  const isFocused = useRef(false)
 
-  // Sincroniza quando value chega de fora (edição de prova existente)
+  const html = value ?? CABECALHO_PADRAO
+
+  // Sincroniza editor com value externo
   useEffect(() => {
-    if (value && Object.keys(value).length > 0) {
-      setCfg({ ...DEFAULTS, ...value })
+    if (editorRef.current && !isFocused.current) {
+      if (editorRef.current.innerHTML !== html) {
+        editorRef.current.innerHTML = html
+      }
     }
-  }, [JSON.stringify(value)])
+  }, [html])
 
-  function set(key, val) {
-    const novo = { ...cfg, [key]: val }
-    setCfg(novo)
-    onChange(novo)
+  function handleInput() {
+    onChange(editorRef.current.innerHTML)
   }
 
   async function handleLogo(e) {
@@ -44,7 +39,12 @@ export default function ProvaHeader({ value = {}, onChange }) {
     try {
       setUploading(true)
       const { url } = await uploadImagem(file, 'cabecalhos')
-      set('logoUrl', url)
+      // Insere a imagem no cursor
+      editorRef.current?.focus()
+      document.execCommand('insertHTML', false,
+        `<img src="${url}" style="max-height:64px;width:auto;vertical-align:middle;margin:4px 8px 4px 0" />`
+      )
+      onChange(editorRef.current.innerHTML)
       toast.success('Logo inserida!')
     } catch (err) {
       toast.error('Erro ao enviar logo: ' + err.message)
@@ -54,169 +54,95 @@ export default function ProvaHeader({ value = {}, onChange }) {
     }
   }
 
-  const align = cfg.alinhamento || 'center'
+  function fmt(cmd, val) {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val)
+    onChange(editorRef.current.innerHTML)
+  }
+
+  function resetar() {
+    if (!confirm('Restaurar o cabeçalho padrão?')) return
+    onChange(CABECALHO_PADRAO)
+    if (editorRef.current) editorRef.current.innerHTML = CABECALHO_PADRAO
+  }
 
   return (
     <div className={styles.wrap}>
 
-      {/* ── Preview ── */}
-      <div className={styles.preview} style={{ background: cfg.corFundo }}>
+      {/* Preview sempre visível */}
+      <div className={styles.preview}
+        dangerouslySetInnerHTML={{ __html: html }} />
 
-        {/* Linha 1: logo sozinho, com alinhamento */}
-        {cfg.logoUrl && (
-          <div className={styles.previewLogoRow} style={{ textAlign: align }}>
-            <img src={cfg.logoUrl} alt="Logo" className={styles.previewLogo} />
-          </div>
-        )}
-
-        {/* Linha 2: nome da escola */}
-        {cfg.nomeEscola && (
-          <div className={styles.previewEscola} style={{
-            textAlign: align,
-            fontWeight: cfg.negrito ? 800 : 600,
-            color: cfg.corTexto,
-          }}>
-            {cfg.nomeEscola}
-          </div>
-        )}
-
-        {/* Linha 3: professor */}
-        {cfg.nomeProfessor && (
-          <div className={styles.previewProf} style={{ textAlign: align, color: cfg.corTexto }}>
-            Professor(a): {cfg.nomeProfessor}
-          </div>
-        )}
-
-        {/* Linha 4: data e nota */}
-        {cfg.mostrarData && (
-          <div className={styles.previewData} style={{ textAlign: align, color: cfg.corTexto }}>
-            Data: ___/___/______&nbsp;&nbsp;&nbsp;Nota: _______
-          </div>
-        )}
-
-        {cfg.mostrarLinha && (
-          <div className={styles.previewLinha} style={{ borderColor: cfg.corTexto }} />
-        )}
-
-        {/* Placeholder vazio */}
-        {!cfg.logoUrl && !cfg.nomeEscola && !cfg.nomeProfessor && (
-          <div className={styles.previewVazio}>
-            Clique em "Editar cabeçalho" para personalizar
-          </div>
-        )}
+      {/* Toggle */}
+      <div className={styles.toggleRow}>
+        <button type="button" className={styles.toggleBtn}
+          onClick={() => setAberto(v => !v)}>
+          {aberto ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
+          {aberto ? 'Fechar editor' : 'Editar cabeçalho'}
+        </button>
+        <button type="button" className={styles.resetBtn} onClick={resetar}>
+          Restaurar padrão
+        </button>
       </div>
 
-      {/* ── Toggle ── */}
-      <button type="button" className={styles.toggleBtn} onClick={() => setAberto(v => !v)}>
-        {aberto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        {aberto ? 'Fechar editor de cabeçalho' : 'Editar cabeçalho da prova'}
-      </button>
-
-      {/* ── Painel ── */}
+      {/* Editor */}
       {aberto && (
-        <div className={styles.painel}>
-          <div className={styles.painelGrid}>
+        <div className={styles.editorWrap}>
+          {/* Barra de formatação */}
+          <div className={styles.toolbar}>
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('bold') }} title="Negrito">
+              <b>B</b>
+            </button>
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('italic') }} title="Itálico">
+              <i>I</i>
+            </button>
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('underline') }} title="Sublinhado">
+              <u>U</u>
+            </button>
+            <div className={styles.sep} />
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('justifyLeft') }} title="Esquerda">⬅</button>
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('justifyCenter') }} title="Centro">⬛</button>
+            <button type="button" className={styles.toolBtn}
+              onMouseDown={e => { e.preventDefault(); fmt('justifyRight') }} title="Direita">➡</button>
+            <div className={styles.sep} />
 
-            {/* Coluna 1 — Informações */}
-            <div className={styles.painelCol}>
-              <p className={styles.painelTitulo}>Informações</p>
+            <label className={styles.toolLabel}>Tamanho</label>
+            <select className={styles.toolSelect}
+              onChange={e => fmt('fontSize', e.target.value)}>
+              {[1,2,3,4,5,6,7].map(n => (
+                <option key={n} value={n}>{['8','10','12','14','18','24','36'][n-1]}pt</option>
+              ))}
+            </select>
 
-              <label className={styles.fieldLabel}>Nome da escola / secretaria</label>
-              <input className={styles.fieldInput}
-                placeholder="E.M. Prof. João Silva"
-                value={cfg.nomeEscola}
-                onChange={e => set('nomeEscola', e.target.value)}
-              />
+            <label className={styles.toolLabel}>Cor</label>
+            <input type="color" className={styles.toolColor} defaultValue="#000000"
+              onChange={e => fmt('foreColor', e.target.value)} title="Cor do texto" />
 
-              <label className={styles.fieldLabel}>Nome do professor(a)</label>
-              <input className={styles.fieldInput}
-                placeholder="Maria Oliveira"
-                value={cfg.nomeProfessor}
-                onChange={e => set('nomeProfessor', e.target.value)}
-              />
-
-              <div className={styles.checkRow}>
-                <input type="checkbox" id="hdr-data" checked={!!cfg.mostrarData}
-                  onChange={e => set('mostrarData', e.target.checked)} />
-                <label htmlFor="hdr-data">Mostrar linha de data / nota</label>
-              </div>
-              <div className={styles.checkRow}>
-                <input type="checkbox" id="hdr-linha" checked={!!cfg.mostrarLinha}
-                  onChange={e => set('mostrarLinha', e.target.checked)} />
-                <label htmlFor="hdr-linha">Mostrar linha separadora</label>
-              </div>
-              <div className={styles.checkRow}>
-                <input type="checkbox" id="hdr-negrito" checked={!!cfg.negrito}
-                  onChange={e => set('negrito', e.target.checked)} />
-                <label htmlFor="hdr-negrito">Nome da escola em negrito</label>
-              </div>
-            </div>
-
-            {/* Coluna 2 — Visual */}
-            <div className={styles.painelCol}>
-              <p className={styles.painelTitulo}>Visual</p>
-
-              <label className={styles.fieldLabel}>Logo / Brasão</label>
-              <div className={styles.logoRow}>
-                {cfg.logoUrl
-                  ? <img src={cfg.logoUrl} alt="logo" className={styles.logoThumb} />
-                  : <div className={styles.logoEmpty}><Image size={18} /></div>
-                }
-                <div className={styles.logoBtns}>
-                  <button type="button" className={styles.btnSm}
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}>
-                    {uploading ? 'Enviando...' : 'Escolher imagem'}
-                  </button>
-                  {cfg.logoUrl && (
-                    <button type="button" className={styles.btnSmDanger}
-                      onClick={() => set('logoUrl', '')}>
-                      <Trash2 size={11} /> Remover
-                    </button>
-                  )}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*"
-                  style={{ display: 'none' }} onChange={handleLogo} />
-              </div>
-
-              <label className={styles.fieldLabel}>Alinhamento</label>
-              <div className={styles.alignRow}>
-                {[['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]].map(([v, Icon]) => (
-                  <button key={v} type="button"
-                    className={`${styles.alignBtn} ${cfg.alinhamento === v ? styles.alignBtnOn : ''}`}
-                    onClick={() => set('alinhamento', v)}>
-                    <Icon size={14} />
-                  </button>
-                ))}
-              </div>
-
-              <label className={styles.fieldLabel}>Cor do texto</label>
-              <div className={styles.colorRow}>
-                {CORES_TEXTO.map(c => (
-                  <button key={c} type="button"
-                    className={`${styles.colorDot} ${cfg.corTexto === c ? styles.colorDotOn : ''}`}
-                    style={{ background: c }}
-                    onClick={() => set('corTexto', c)} />
-                ))}
-                <input type="color" value={cfg.corTexto}
-                  onChange={e => set('corTexto', e.target.value)}
-                  className={styles.colorPicker} title="Cor personalizada" />
-              </div>
-
-              <label className={styles.fieldLabel}>Cor de fundo</label>
-              <div className={styles.colorRow}>
-                {CORES_FUNDO.map(c => (
-                  <button key={c} type="button"
-                    className={`${styles.colorDot} ${cfg.corFundo === c ? styles.colorDotOn : ''}`}
-                    style={{ background: c, border: c === '#ffffff' ? '1px solid #e2e8f0' : 'none' }}
-                    onClick={() => set('corFundo', c)} />
-                ))}
-                <input type="color" value={cfg.corFundo}
-                  onChange={e => set('corFundo', e.target.value)}
-                  className={styles.colorPicker} title="Cor personalizada" />
-              </div>
-            </div>
+            <div className={styles.sep} />
+            <button type="button" className={`${styles.toolBtn} ${styles.toolBtnImg}`}
+              onClick={() => fileRef.current?.click()}
+              title="Inserir logo/imagem" disabled={uploading}>
+              <Image size={13} /> {uploading ? 'Enviando...' : 'Logo'}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*"
+              style={{display:'none'}} onChange={handleLogo} />
           </div>
+
+          {/* Área editável */}
+          <div
+            ref={editorRef}
+            className={styles.editor}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={handleInput}
+            onFocus={() => { isFocused.current = true }}
+            onBlur={() => { isFocused.current = false }}
+          />
         </div>
       )}
     </div>
