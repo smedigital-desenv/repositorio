@@ -15,7 +15,8 @@ const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º a
 export default function ProvaForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { usuario } = useAuth()
+  const { usuario, isFormador, isAdmin } = useAuth()
+  const podeEditar = isFormador || isAdmin
   const queryClient = useQueryClient()
   const isEdicao = !!id
 
