@@ -1,79 +1,80 @@
-import { useState, useEffect, useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { uploadImagem } from '../services/upload'
-import { ChevronDown, ChevronUp, Trash2, Image } from 'lucide-react'
+import { ChevronDown, ChevronUp, Image } from 'lucide-react'
 import toast from 'react-hot-toast'
 import styles from './ProvaHeader.module.css'
 
-export const CABECALHO_PADRAO = `<div style="text-align:center;padding:12px 0 6px">
-  <p style="font-size:11pt;font-weight:700;margin:0">PREFEITURA MUNICIPAL DE RIBEIRÃO PRETO</p>
-  <p style="font-size:10pt;margin:4px 0 0">SECRETARIA MUNICIPAL DE EDUCAÇÃO</p>
-  <p style="font-size:9pt;margin:6px 0 0">Professor(a): ________________________________&nbsp;&nbsp;&nbsp;Data: ___/___/_____</p>
-  <p style="font-size:9pt;margin:4px 0 0">Aluno(a): ____________________________________&nbsp;&nbsp;&nbsp;Nota: __________</p>
+export const CABECALHO_PADRAO = `<div style="text-align:center;padding:10px 0 6px">
+  <p style="font-size:13pt;font-weight:800;margin:0">PREFEITURA MUNICIPAL DE RIBEIRÃO PRETO</p>
+  <p style="font-size:11pt;margin:4px 0 0">SECRETARIA MUNICIPAL DE EDUCAÇÃO</p>
+  <hr style="margin:8px 0;border:none;border-top:1px solid #999"/>
+  <p style="font-size:10pt;margin:4px 0 0">Professor(a): ________________________________&nbsp;&nbsp;&nbsp;Data: ___/___/_____</p>
+  <p style="font-size:10pt;margin:4px 0 0">Aluno(a): ____________________________________&nbsp;&nbsp;&nbsp;Turma: ________&nbsp;&nbsp;&nbsp;Nota: ______</p>
 </div>`
 
-export default function ProvaHeader({ value, onChange }) {
+// O componente é UNCONTROLLED internamente: o contentEditable é a fonte da verdade.
+// O pai controla só via prop value (para carregar) e onChange (para salvar).
+export default function ProvaHeader({ value, onChange, aberto, setAberto }) {
   const fileRef = useRef(null)
-  const [aberto, setAberto] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const editorRef = useRef(null)
-  const isFocused = useRef(false)
+  const initialized = useRef(false)
 
-  const html = value ?? CABECALHO_PADRAO
+  const html = value || CABECALHO_PADRAO
 
-  // Sincroniza editor com value externo
+  // Carrega o HTML no editor quando:
+  // 1. Primeira montagem
+  // 2. value muda externamente E o editor não está focado
   useEffect(() => {
-    if (editorRef.current && !isFocused.current) {
-      if (editorRef.current.innerHTML !== html) {
-        editorRef.current.innerHTML = html
-      }
+    if (!editorRef.current) return
+    // Sempre força sincronização quando value muda (vem do banco)
+    if (editorRef.current.innerHTML !== html) {
+      editorRef.current.innerHTML = html
     }
+    initialized.current = true
   }, [html])
 
   function handleInput() {
-    onChange(editorRef.current.innerHTML)
+    if (onChange) onChange(editorRef.current.innerHTML)
   }
 
   async function handleLogo(e) {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      setUploading(true)
       const { url } = await uploadImagem(file, 'cabecalhos')
-      // Insere a imagem no cursor
       editorRef.current?.focus()
       document.execCommand('insertHTML', false,
-        `<img src="${url}" style="max-height:64px;width:auto;vertical-align:middle;margin:4px 8px 4px 0" />`
+        `<img src="${url}" style="max-height:70px;width:auto;vertical-align:middle;margin:4px 8px 4px 0" />`
       )
-      onChange(editorRef.current.innerHTML)
+      if (onChange) onChange(editorRef.current.innerHTML)
       toast.success('Logo inserida!')
     } catch (err) {
       toast.error('Erro ao enviar logo: ' + err.message)
     } finally {
-      setUploading(false)
       e.target.value = ''
     }
   }
 
   function fmt(cmd, val) {
     editorRef.current?.focus()
-    document.execCommand(cmd, false, val)
-    onChange(editorRef.current.innerHTML)
+    document.execCommand(cmd, false, val || undefined)
+    if (onChange) onChange(editorRef.current.innerHTML)
   }
 
   function resetar() {
     if (!confirm('Restaurar o cabeçalho padrão?')) return
-    onChange(CABECALHO_PADRAO)
     if (editorRef.current) editorRef.current.innerHTML = CABECALHO_PADRAO
+    if (onChange) onChange(CABECALHO_PADRAO)
   }
 
   return (
     <div className={styles.wrap}>
 
-      {/* Preview sempre visível */}
+      {/* Preview — sempre visível, renderiza o HTML atual */}
       <div className={styles.preview}
         dangerouslySetInnerHTML={{ __html: html }} />
 
-      {/* Toggle */}
+      {/* Botões de controle */}
       <div className={styles.toggleRow}>
         <button type="button" className={styles.toggleBtn}
           onClick={() => setAberto(v => !v)}>
@@ -85,66 +86,66 @@ export default function ProvaHeader({ value, onChange }) {
         </button>
       </div>
 
-      {/* Editor */}
-      {aberto && (
-        <div className={styles.editorWrap}>
-          {/* Barra de formatação */}
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('bold') }} title="Negrito">
-              <b>B</b>
-            </button>
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('italic') }} title="Itálico">
-              <i>I</i>
-            </button>
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('underline') }} title="Sublinhado">
-              <u>U</u>
-            </button>
-            <div className={styles.sep} />
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('justifyLeft') }} title="Esquerda">⬅</button>
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('justifyCenter') }} title="Centro">⬛</button>
-            <button type="button" className={styles.toolBtn}
-              onMouseDown={e => { e.preventDefault(); fmt('justifyRight') }} title="Direita">➡</button>
-            <div className={styles.sep} />
+      {/* Editor — sempre montado, visível só quando aberto */}
+      <div className={styles.editorWrap} style={{ display: aberto ? 'block' : 'none' }}>
+        <div className={styles.toolbar}>
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('bold') }}><b>B</b></button>
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('italic') }}><i>I</i></button>
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('underline') }}><u>U</u></button>
 
-            <label className={styles.toolLabel}>Tamanho</label>
-            <select className={styles.toolSelect}
-              onChange={e => fmt('fontSize', e.target.value)}>
-              {[1,2,3,4,5,6,7].map(n => (
-                <option key={n} value={n}>{['8','10','12','14','18','24','36'][n-1]}pt</option>
-              ))}
-            </select>
+          <div className={styles.sep}/>
 
-            <label className={styles.toolLabel}>Cor</label>
-            <input type="color" className={styles.toolColor} defaultValue="#000000"
-              onChange={e => fmt('foreColor', e.target.value)} title="Cor do texto" />
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('justifyLeft') }}
+            title="Alinhar à esquerda">⇤</button>
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('justifyCenter') }}
+            title="Centralizar">⇔</button>
+          <button type="button" className={styles.toolBtn}
+            onMouseDown={e => { e.preventDefault(); fmt('justifyRight') }}
+            title="Alinhar à direita">⇥</button>
 
-            <div className={styles.sep} />
-            <button type="button" className={`${styles.toolBtn} ${styles.toolBtnImg}`}
-              onClick={() => fileRef.current?.click()}
-              title="Inserir logo/imagem" disabled={uploading}>
-              <Image size={13} /> {uploading ? 'Enviando...' : 'Logo'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*"
-              style={{display:'none'}} onChange={handleLogo} />
-          </div>
+          <div className={styles.sep}/>
 
-          {/* Área editável */}
-          <div
-            ref={editorRef}
-            className={styles.editor}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={handleInput}
-            onFocus={() => { isFocused.current = true }}
-            onBlur={() => { isFocused.current = false }}
-          />
+          <span className={styles.toolLabel}>Fonte</span>
+          <select className={styles.toolSelect}
+            defaultValue="3"
+            onChange={e => fmt('fontSize', e.target.value)}>
+            <option value="1">8pt</option>
+            <option value="2">10pt</option>
+            <option value="3">12pt</option>
+            <option value="4">14pt</option>
+            <option value="5">18pt</option>
+            <option value="6">24pt</option>
+            <option value="7">36pt</option>
+          </select>
+
+          <span className={styles.toolLabel}>Cor</span>
+          <input type="color" className={styles.toolColor} defaultValue="#000000"
+            onChange={e => fmt('foreColor', e.target.value)} />
+
+          <div className={styles.sep}/>
+
+          <button type="button" className={`${styles.toolBtn} ${styles.toolBtnImg}`}
+            onClick={() => fileRef.current?.click()}>
+            <Image size={12}/> Logo
+          </button>
+          <input ref={fileRef} type="file" accept="image/*"
+            style={{display:'none'}} onChange={handleLogo}/>
         </div>
-      )}
+
+        {/* contentEditable — sempre montado para preservar o conteúdo */}
+        <div
+          ref={editorRef}
+          className={styles.editor}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+        />
+      </div>
     </div>
   )
 }
