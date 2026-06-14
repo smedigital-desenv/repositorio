@@ -24,7 +24,6 @@ export default function QuestaoDetalhe() {
   const queryClient = useQueryClient()
   const podeAprovar = isFormador || isAdmin
   const isProfessor = !isFormador && !isAdmin
-  const ehAutor = questao?.autor_id === usuario?.id
   const [minhaAvaliacao, setMinhaAvaliacao] = useState(0)
   const [favoritoId, setFavoritoId] = useState(null)
   const [modalProva, setModalProva] = useState(false)
@@ -34,6 +33,8 @@ export default function QuestaoDetalhe() {
     queryKey: ['questao', id],
     queryFn: () => buscarQuestao(id),
   })
+
+  const ehAutor = questao?.autor_id === usuario?.id
 
   const { data: favoritos = [] } = useQuery({
     queryKey: ['favoritos'],
