@@ -122,3 +122,25 @@
   color: white !important;
   border-color: var(--color-primary) !important;
 }
+
+/* Configurações de impressão */
+.cfgGrid { display: flex; flex-direction: column; gap: 14px; }
+.cfgFonteRow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.cfgFonteBtn {
+  padding: 5px 11px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-default); background: var(--bg-surface);
+  font-size: 12px; font-weight: 700; font-family: var(--font-sans);
+  color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+}
+.cfgFonteBtn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.cfgFonteBtnOn {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border-color: var(--color-primary) !important;
+}
+.cfgOpcoes { display: flex; flex-direction: column; gap: 8px; }
+.cfgCheck {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-secondary); cursor: pointer;
+}
+.cfgCheck input { accent-color: var(--color-primary); width: 15px; height: 15px; cursor: pointer; }

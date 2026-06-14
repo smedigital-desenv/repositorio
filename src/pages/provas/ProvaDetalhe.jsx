@@ -1,16 +1,16 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { buscarProva, registrarUsoProva, gerarPDFProva } from '../../services/provas'
+import { buscarProva, registrarUsoProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Download, Printer, Pencil } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil } from 'lucide-react'
 import { useEffect } from 'react'
-import toast from 'react-hot-toast'
+import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
 import styles from './ProvaDetalhe.module.css'
 
 export default function ProvaDetalhe() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { usuario, isFormador, isAdmin } = useAuth()
+  const { isFormador, isAdmin, usuario } = useAuth()
   const podeEditar = isFormador || isAdmin
 
   const { data: prova, isLoading } = useQuery({
@@ -22,22 +22,6 @@ export default function ProvaDetalhe() {
     if (id) registrarUsoProva(id)
   }, [id])
 
-  async function handleGerarPDF() {
-    if (!prova) return
-    try {
-      const html = await gerarPDFProva(prova)
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${prova.titulo}.pdf`
-      link.click()
-      toast.success('PDF gerado!')
-    } catch (err) {
-      toast.error('Erro ao gerar PDF')
-    }
-  }
-
   function handleImprimir() {
     window.print()
   }
@@ -45,46 +29,54 @@ export default function ProvaDetalhe() {
   if (isLoading) return <div className={styles.loading}>Carregando prova...</div>
   if (!prova) return <div className={styles.loading}>Prova não encontrada.</div>
 
+  const cfg = prova.cfg_impressao || {}
+  const fontSize = cfg.tamanhoFonte ? `${cfg.tamanhoFonte}pt` : '11pt'
+  const separador = cfg.separadorQuestoes !== false
+  const semQuebra = cfg.quebrarPagina !== false
+  const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
+
   return (
     <div className={styles.page}>
+      {/* Topbar — não aparece na impressão */}
       <div className={styles.topbar}>
         <button className={styles.btnBack} onClick={() => navigate('/provas')}>
           <ChevronLeft size={16} /> Voltar
         </button>
+        <div className={styles.topbarInfo}>
+          <span className={styles.topbarTitulo}>{prova.titulo}</span>
+          <span className={styles.topbarMeta}>
+            {prova.questoes?.length || 0} questões
+            {prova.ano_escolar && ` · ${prova.ano_escolar}`}
+          </span>
+        </div>
         <div className={styles.topbarAcoes}>
           <button className={styles.btnSecondary} onClick={handleImprimir}>
-            <Printer size={14} /> Imprimir
+            <Printer size={14} /> Imprimir / PDF
           </button>
-          <button className={styles.btnSecondary} onClick={handleGerarPDF}>
-            <Download size={14} /> PDF
-          </button>
-          {podeEditar && (
-            <button className={styles.btnSecondary} onClick={() => navigate(`/provas/${id}/editar`)}>
+          {(podeEditar || prova.autor_id === usuario?.id) && (
+            <button className={styles.btnSecondary}
+              onClick={() => navigate(`/provas/${id}/editar`)}>
               <Pencil size={14} /> Editar
             </button>
           )}
         </div>
       </div>
 
-      <div className={styles.container}>
-        {/* Cabeçalho */}
-        <div className={styles.header}>
-          <h1 className={styles.titulo}>{prova.titulo}</h1>
-          {prova.descricao && <p className={styles.descricao}>{prova.descricao}</p>}
-          
-          <div className={styles.meta}>
-            <span>Disciplina: <strong>{prova.disciplinas?.nome || '—'}</strong></span>
-            <span>Ano: <strong>{prova.ano_escolar || '—'}</strong></span>
-            <span>Questões: <strong>{prova.questoes?.length || 0}</strong></span>
-          </div>
+      {/* Conteúdo imprimível */}
+      <div className={styles.printArea} style={{ fontSize }}>
 
-          {prova.instrucoes && (
-            <div className={styles.instrucoes}>
-              <p className={styles.instrTitulo}>Instruções:</p>
-              <p>{prova.instrucoes}</p>
-            </div>
-          )}
-        </div>
+        {/* Cabeçalho HTML personalizado */}
+        <div className={styles.cabecalho}
+          dangerouslySetInnerHTML={{ __html: cabecalhoHtml }} />
+
+        {/* Título da prova */}
+        <h1 className={styles.tituloprova}>{prova.titulo}</h1>
+
+        {prova.instrucoes && (
+          <div className={styles.instrucoes}>
+            <strong>Instruções:</strong> {prova.instrucoes}
+          </div>
+        )}
 
         {/* Questões */}
         <div className={styles.questoes}>
@@ -92,15 +84,32 @@ export default function ProvaDetalhe() {
             <p className={styles.vazio}>Nenhuma questão nesta prova.</p>
           ) : (
             prova.questoes.map((q, idx) => (
-              <div key={q.id} className={styles.questao}>
-                <h3 className={styles.qNum}>Questão {idx + 1}</h3>
+              <div key={q.id}
+                className={styles.questao}
+                style={{
+                  pageBreakInside: semQuebra ? 'avoid' : 'auto',
+                  borderTop: separador && idx > 0
+                    ? '1px solid #e2e8f0' : 'none',
+                  paddingTop: separador && idx > 0 ? '14px' : '0',
+                  marginTop: idx > 0 ? '14px' : '0',
+                }}>
+                <div className={styles.qHeader}>
+                  <span className={styles.qNum}>Questão {idx + 1}</span>
+                  {q.nivel_dificuldade && (
+                    <span className={styles.qDif}>
+                      {'●'.repeat(q.nivel_dificuldade)}{'○'.repeat(5 - q.nivel_dificuldade)}
+                    </span>
+                  )}
+                </div>
+
                 <div className={styles.enunciado}
+                  style={{ fontSize }}
                   dangerouslySetInnerHTML={{ __html: q.enunciado }} />
 
                 {q.tipo === 'multipla_escolha' && q.alternativas?.length > 0 && (
                   <div className={styles.alternativas}>
                     {q.alternativas.map(alt => (
-                      <div key={alt.id} className={styles.altItem}>
+                      <div key={alt.id} className={styles.altItem} style={{ fontSize }}>
                         <span className={styles.altLetra}>{alt.letra})</span>
                         <span dangerouslySetInnerHTML={{ __html: alt.texto }} />
                       </div>
@@ -110,21 +119,20 @@ export default function ProvaDetalhe() {
 
                 {q.tipo === 'dissertativa' && (
                   <div className={styles.espacoResposta}>
-                    _________________________________________________________________<br/>
-                    _________________________________________________________________<br/>
-                    _________________________________________________________________<br/>
-                    _________________________________________________________________
+                    {Array(4).fill(null).map((_, i) => (
+                      <div key={i} className={styles.linhaResposta} />
+                    ))}
                   </div>
                 )}
               </div>
             ))
           )}
         </div>
-      </div>
 
-      {/* Rodapé para impressão */}
-      <div className={styles.printFooter}>
-        <p>Data: ________________     Assinatura: ___________________________</p>
+        <div className={styles.rodape}>
+          <span>Total: {prova.questoes?.length || 0} questões</span>
+          <span>Assinatura: ___________________________</span>
+        </div>
       </div>
     </div>
   )

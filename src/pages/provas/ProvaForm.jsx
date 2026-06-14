@@ -7,7 +7,7 @@ import {
 } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
 import { Plus, Trash2, ChevronLeft, Save, GripVertical, Lock, Users } from 'lucide-react'
-import ProvaHeader from '../../components/ProvaHeader'
+import ProvaHeader, { CABECALHO_PADRAO } from '../../components/ProvaHeader'
 import toast from 'react-hot-toast'
 import styles from './ProvaForm.module.css'
 
@@ -24,7 +24,12 @@ export default function ProvaForm() {
   const [form, setForm] = useState({
     titulo: '', descricao: '', disciplina_id: '', disciplinas_ids: [], ano_escolar: '', instrucoes: '', visibilidade: 'pessoal', tipo_prova: 'disciplina'
   })
-  const [cabecalho, setCabecalho] = useState({})
+  const [cabecalho, setCabecalho] = useState(CABECALHO_PADRAO)
+  const [cfgImpressao, setCfgImpressao] = useState({
+    tamanhoFonte: 11,
+    separadorQuestoes: true,
+    quebrarPagina: false,
+  })
   const [questoes, setQuestoes] = useState([])
   const [buscaTexto, setBuscaTexto] = useState('')
   const [filtroDisc, setFiltroDisc] = useState('')
@@ -49,7 +54,8 @@ export default function ProvaForm() {
         visibilidade: provaExistente.visibilidade || 'pessoal',
       })
       setQuestoes(provaExistente.questoes?.map(q => q.id) || [])
-      setCabecalho(provaExistente.cabecalho || {})
+      setCabecalho(provaExistente.cabecalho || CABECALHO_PADRAO)
+      if (provaExistente.cfg_impressao) setCfgImpressao(provaExistente.cfg_impressao)
     }
   }, [provaExistente])
 
@@ -64,7 +70,7 @@ export default function ProvaForm() {
     mutationFn: async () => {
       if (!form.titulo.trim()) throw new Error('Título é obrigatório')
 
-      const dados = { ...form, disciplina_id: form.tipo_prova === 'disciplina' ? (form.disciplina_id || null) : null, disciplinas_ids: form.tipo_prova === 'simulado' ? form.disciplinas_ids : [], autor_id: usuario.id, cabecalho }
+      const dados = { ...form, disciplina_id: form.tipo_prova === 'disciplina' ? (form.disciplina_id || null) : null, disciplinas_ids: form.tipo_prova === 'simulado' ? form.disciplinas_ids : [], autor_id: usuario.id, cabecalho, cfg_impressao: cfgImpressao }
 
       if (isEdicao) {
         return atualizarProva(id, dados, questoes)
@@ -149,6 +155,38 @@ export default function ProvaForm() {
               onChange={e => setForm(f => ({...f, instrucoes: e.target.value}))}
               rows={2}
             />
+          </div>
+
+          <div className={styles.card}>
+            <p className={styles.cardTitulo}>Configurações de impressão / PDF</p>
+
+            <div className={styles.cfgGrid}>
+              <div className={styles.field}>
+                <label className={styles.label}>Tamanho da fonte das questões</label>
+                <div className={styles.cfgFonteRow}>
+                  {[9,10,11,12,13,14].map(n => (
+                    <button key={n} type="button"
+                      className={`${styles.cfgFonteBtn} ${cfgImpressao.tamanhoFonte === n ? styles.cfgFonteBtnOn : ''}`}
+                      onClick={() => setCfgImpressao(c => ({...c, tamanhoFonte: n}))}>
+                      {n}pt
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.cfgOpcoes}>
+                <label className={styles.cfgCheck}>
+                  <input type="checkbox" checked={cfgImpressao.separadorQuestoes}
+                    onChange={e => setCfgImpressao(c => ({...c, separadorQuestoes: e.target.checked}))} />
+                  Separador entre questões (linha)
+                </label>
+                <label className={styles.cfgCheck}>
+                  <input type="checkbox" checked={cfgImpressao.quebrarPagina}
+                    onChange={e => setCfgImpressao(c => ({...c, quebrarPagina: e.target.checked}))} />
+                  Evitar quebra de página dentro de uma questão
+                </label>
+              </div>
+            </div>
           </div>
 
           <div className={styles.card}>
