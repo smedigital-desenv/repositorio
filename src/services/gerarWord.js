@@ -1,113 +1,195 @@
 import {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, PageOrientation,
-  ShadingType, HeadingLevel, PageBreak, HorizontalPositionRelativeFrom,
+  Document, Packer, Paragraph, TextRun, ImageRun,
+  AlignmentType, BorderStyle, WidthType,
 } from 'docx'
 import { CABECALHO_PADRAO } from '../components/ProvaHeader'
 
-// Converte HTML simples em TextRuns do docx (bold, italic, texto puro)
-function htmlParaRuns(html = '') {
-  if (!html) return [new TextRun('')]
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const texto = div.innerText || div.textContent || ''
-  if (!texto.trim()) return [new TextRun('')]
-
-  // Usa innerText que já interpreta <br>, parágrafos etc
-  return [new TextRun({ text: texto })]
+// Busca imagem e retorna { data: Uint8Array, type: 'png'|'jpg'|'gif' }
+async function fetchImagem(url) {
+  try {
+    const resp = await fetch(url)
+    if (!resp.ok) return null
+    const buffer = await resp.arrayBuffer()
+    const contentType = resp.headers.get('content-type') || ''
+    const type = contentType.includes('png') ? 'png'
+               : contentType.includes('gif') ? 'gif'
+               : 'jpg'
+    return { data: new Uint8Array(buffer), type }
+  } catch {
+    return null
+  }
 }
 
-// Extrai texto puro do HTML
-function htmlParaTexto(html = '') {
-  if (!html) return ''
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return (div.innerText || div.textContent || '').trim()
+// Converte px para EMUs (English Metric Units — unidade do docx)
+// 1 polegada = 914400 EMUs = 96px
+function pxParaEmu(px) {
+  return Math.round((px / 96) * 914400)
 }
 
-// Parse básico do HTML do cabeçalho → parágrafos do docx
-function cabecalhoParaParagrafos(html) {
+// Processa um nó HTML e retorna array de { tipo: 'texto'|'imagem', ... }
+async function processarNo(no) {
+  const itens = []
+
+  if (no.nodeType === Node.TEXT_NODE) {
+    const txt = no.textContent
+    if (txt) itens.push({ tipo: 'texto', texto: txt })
+    return itens
+  }
+
+  if (no.nodeType !== Node.ELEMENT_NODE) return itens
+
+  const tag = no.tagName?.toUpperCase()
+
+  if (tag === 'IMG') {
+    const src = no.getAttribute('src')
+    if (src) {
+      const img = await fetchImagem(src)
+      if (img) {
+        // Tenta pegar dimensões do atributo style ou padrão
+        const styleW = parseInt(no.style?.width)   || no.width  || 0
+        const styleH = parseInt(no.style?.height)  || no.height || 0
+        const maxW = 500  // px — largura máxima na página
+        const maxH = 300
+
+        // Calcula proporção se tiver dimensões, senão usa padrão
+        let w = styleW || maxW
+        let h = styleH || 200
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW }
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH }
+
+        itens.push({ tipo: 'imagem', data: img.data, type: img.type, w, h })
+      }
+    }
+    return itens
+  }
+
+  // Processa filhos recursivamente
+  for (const filho of no.childNodes) {
+    const sub = await processarNo(filho)
+    itens.push(...sub)
+  }
+
+  // Adiciona quebra de linha para elementos de bloco
+  if (['P', 'DIV', 'BR', 'LI', 'H1', 'H2', 'H3', 'H4'].includes(tag)) {
+    if (itens.length > 0 && itens[itens.length - 1]?.tipo !== 'br') {
+      itens.push({ tipo: 'br' })
+    }
+  }
+
+  return itens
+}
+
+// Converte lista de itens em Paragraphs do docx
+// Agrupa texto e imagens por linha (separados por 'br')
+function itensParagrafos(itens, opts = {}) {
+  const { fontSize = 22, bold = false, alignment = AlignmentType.LEFT,
+          keepNext = false, indent = 0, spacingBefore = 20, spacingAfter = 60 } = opts
+
+  const paragrafos = []
+  let runAtual = []
+
+  function flushParagrafo() {
+    if (runAtual.length === 0) return
+    paragrafos.push(new Paragraph({
+      alignment,
+      spacing: { before: spacingBefore, after: spacingAfter },
+      keepNext,
+      indent: indent ? { left: indent } : undefined,
+      children: runAtual.map(item => {
+        if (item.tipo === 'texto') {
+          return new TextRun({ text: item.texto, bold, size: fontSize })
+        }
+        if (item.tipo === 'imagem') {
+          return new ImageRun({
+            data: item.data,
+            type: item.type,
+            transformation: {
+              width: pxParaEmu(item.w),
+              height: pxParaEmu(item.h),
+            },
+          })
+        }
+        return new TextRun({ text: '' })
+      }),
+    }))
+    runAtual = []
+  }
+
+  for (const item of itens) {
+    if (item.tipo === 'br') {
+      flushParagrafo()
+    } else {
+      runAtual.push(item)
+    }
+  }
+  flushParagrafo()
+
+  return paragrafos.length > 0 ? paragrafos
+    : [new Paragraph({ children: [new TextRun('')] })]
+}
+
+// Converte HTML do cabeçalho em parágrafos do docx
+async function cabecalhoParaParagrafos(html) {
   const div = document.createElement('div')
   div.innerHTML = html || CABECALHO_PADRAO
 
   const paragrafos = []
+  const elementos = div.querySelectorAll('p, h1, h2, h3')
 
-  // Extrai elementos de texto (p, div, span)
-  const elementos = div.querySelectorAll('p, div > span, h1, h2, h3')
-  const visitados = new Set()
+  if (elementos.length > 0) {
+    for (const el of elementos) {
+      const itens = await processarNo(el)
+      const style = el.getAttribute('style') || ''
+      const bold = style.includes('font-weight:7') || style.includes('font-weight:8') ||
+                   style.includes('bold') || ['H1','H2','H3'].includes(el.tagName)
+      const matchSize = style.match(/font-size:\s*([\d.]+)pt/)
+      const fontSize = matchSize ? Math.round(parseFloat(matchSize[1]) * 2) : 22
+      const matchAlign = style.match(/text-align:\s*(\w+)/)
+      const align = matchAlign
+        ? matchAlign[1] === 'right' ? AlignmentType.RIGHT
+        : matchAlign[1] === 'left'  ? AlignmentType.LEFT
+        :                              AlignmentType.CENTER
+        : AlignmentType.CENTER
 
-  const processarElemento = (el) => {
-    if (visitados.has(el)) return
-    visitados.add(el)
-
-    const texto = (el.innerText || el.textContent || '').trim()
-    if (!texto) return
-
-    const style = el.getAttribute('style') || ''
-    const isBold = style.includes('font-weight:700') ||
-                   style.includes('font-weight:800') ||
-                   style.includes('bold') ||
-                   el.tagName === 'H1' || el.tagName === 'H2'
-
-    // Tamanho da fonte
-    const matchSize = style.match(/font-size:\s*([\d.]+)pt/)
-    const fontSize = matchSize ? Math.round(parseFloat(matchSize[1]) * 2) : 22 // half-points
-
-    // Alinhamento
-    const matchAlign = style.match(/text-align:\s*(\w+)/)
-    const align = matchAlign ? matchAlign[1] : 'center'
-    const alignment = align === 'right' ? AlignmentType.RIGHT :
-                      align === 'left'  ? AlignmentType.LEFT :
-                                          AlignmentType.CENTER
-
-    paragrafos.push(new Paragraph({
-      alignment,
-      spacing: { before: 40, after: 40 },
-      children: [new TextRun({ text: texto, bold: isBold, size: fontSize })],
+      const pars = itensParagrafos(itens.filter(i => i.tipo !== 'br'), {
+        fontSize, bold, alignment: align,
+        spacingBefore: 30, spacingAfter: 30,
+      })
+      paragrafos.push(...pars)
+    }
+  } else {
+    // Fallback: processa o div inteiro
+    const itens = await processarNo(div)
+    paragrafos.push(...itensParagrafos(itens, {
+      alignment: AlignmentType.CENTER,
+      spacingBefore: 30, spacingAfter: 30,
     }))
   }
 
-  if (elementos.length > 0) {
-    elementos.forEach(processarElemento)
-  } else {
-    // Fallback: divide por \n
-    const linhas = (div.innerText || div.textContent || '').split('\n').filter(l => l.trim())
-    linhas.forEach(linha => {
-      paragrafos.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: linha.trim() })],
-      }))
-    })
-  }
-
-  return paragrafos
+  return paragrafos.length > 0 ? paragrafos
+    : [new Paragraph({ children: [new TextRun('')] })]
 }
 
 export async function gerarWordProva(prova) {
   const cfg = prova.cfg_impressao || {}
-  const fontSize = (cfg.tamanhoFonte || 11) * 2  // docx usa half-points
+  const fontSize = (cfg.tamanhoFonte || 11) * 2  // half-points
   const separador = cfg.separadorQuestoes !== false
-  const semQuebra  = cfg.quebrarPagina !== false
+  const semQuebra = cfg.quebrarPagina !== false
 
-  // ── Cabeçalho ─────────────────────────────────────────────
-  const parsCabecalho = cabecalhoParaParagrafos(prova.cabecalho)
+  // ── Cabeçalho ──────────────────────────────────────────────
+  const parsCabecalho = await cabecalhoParaParagrafos(prova.cabecalho)
 
-  // Linha separadora após cabeçalho
   const linhaSep = new Paragraph({
     border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } },
     spacing: { before: 60, after: 120 },
     children: [],
   })
 
-  // ── Título da prova ────────────────────────────────────────
+  // ── Título ─────────────────────────────────────────────────
   const parTitulo = new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 100, after: 80 },
-    children: [new TextRun({
-      text: prova.titulo,
-      bold: true,
-      size: (cfg.tamanhoFonte || 11) * 2 + 4,
-    })],
+    spacing: { before: 80, after: 80 },
+    children: [new TextRun({ text: prova.titulo, bold: true, size: fontSize + 4 })],
   })
 
   // ── Instruções ─────────────────────────────────────────────
@@ -120,16 +202,15 @@ export async function gerarWordProva(prova) {
         new TextRun({ text: 'Instruções: ', bold: true, size: fontSize }),
         new TextRun({ text: prova.instrucoes, size: fontSize }),
       ],
-    })
+    }),
   ] : []
 
   // ── Questões ───────────────────────────────────────────────
   const parsQuestoes = []
 
-  ;(prova.questoes || []).forEach((q, idx) => {
-    const children = []
+  for (const [idx, q] of (prova.questoes || []).entries()) {
 
-    // Separador entre questões
+    // Linha separadora entre questões
     if (separador && idx > 0) {
       parsQuestoes.push(new Paragraph({
         border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'DDDDDD', space: 6 } },
@@ -138,7 +219,7 @@ export async function gerarWordProva(prova) {
       }))
     }
 
-    // Número da questão + dificuldade
+    // Número + dificuldade
     const dif = q.nivel_dificuldade
       ? ' ' + '●'.repeat(q.nivel_dificuldade) + '○'.repeat(5 - q.nivel_dificuldade)
       : ''
@@ -151,33 +232,34 @@ export async function gerarWordProva(prova) {
       ],
     }))
 
-    // Enunciado (texto puro + preserva imagens como [imagem])
-    const textoEnunciado = htmlParaTexto(q.enunciado)
-    if (textoEnunciado) {
-      parsQuestoes.push(new Paragraph({
-        spacing: { before: 20, after: 80 },
-        keepNext: semQuebra,
-        children: [new TextRun({ text: textoEnunciado, size: fontSize })],
-      }))
-    }
+    // Enunciado com imagens
+    const divEnunciado = document.createElement('div')
+    divEnunciado.innerHTML = q.enunciado || ''
+    const itensEnunciado = await processarNo(divEnunciado)
+    const parsEnunciado = itensParagrafos(itensEnunciado, {
+      fontSize, keepNext: semQuebra,
+      spacingBefore: 20, spacingAfter: 80,
+    })
+    parsQuestoes.push(...parsEnunciado)
 
-    // Alternativas
+    // Alternativas com imagens
     if (q.tipo === 'multipla_escolha' && q.alternativas?.length) {
-      q.alternativas.forEach(alt => {
-        const textoAlt = htmlParaTexto(alt.texto)
-        parsQuestoes.push(new Paragraph({
-          spacing: { before: 20, after: 20 },
-          keepNext: semQuebra,
-          indent: { left: 360 },
-          children: [
-            new TextRun({ text: `${alt.letra}) `, bold: true, size: fontSize }),
-            new TextRun({ text: textoAlt, size: fontSize }),
-          ],
-        }))
-      })
+      for (const alt of q.alternativas) {
+        const divAlt = document.createElement('div')
+        divAlt.innerHTML = alt.texto || ''
+        const itensAlt = await processarNo(divAlt)
+
+        // Prefixo da letra
+        const prefixo = [{ tipo: 'texto', texto: `${alt.letra})  ` }]
+        const parsAlt = itensParagrafos([...prefixo, ...itensAlt.filter(i => i.tipo !== 'br')], {
+          fontSize, keepNext: semQuebra,
+          indent: 360, spacingBefore: 20, spacingAfter: 20,
+        })
+        parsQuestoes.push(...parsAlt)
+      }
     }
 
-    // Espaço para resposta dissertativa
+    // Linhas de resposta dissertativa
     if (q.tipo === 'dissertativa') {
       for (let i = 0; i < 4; i++) {
         parsQuestoes.push(new Paragraph({
@@ -188,7 +270,7 @@ export async function gerarWordProva(prova) {
         }))
       }
     }
-  })
+  }
 
   // ── Rodapé ─────────────────────────────────────────────────
   const parRodape = new Paragraph({
@@ -201,20 +283,18 @@ export async function gerarWordProva(prova) {
     ],
   })
 
-  // ── Montar documento ───────────────────────────────────────
+  // ── Documento ──────────────────────────────────────────────
   const doc = new Document({
     styles: {
       default: {
-        document: {
-          run: { font: 'Arial', size: fontSize },
-        },
+        document: { run: { font: 'Arial', size: fontSize } },
       },
     },
     sections: [{
       properties: {
         page: {
           size: { width: 11906, height: 16838 }, // A4
-          margin: { top: 720, right: 1080, bottom: 720, left: 1080 }, // ~1.2cm top/bottom, ~1.9cm sides
+          margin: { top: 720, right: 1080, bottom: 720, left: 1080 },
         },
       },
       children: [
@@ -228,7 +308,6 @@ export async function gerarWordProva(prova) {
     }],
   })
 
-  // Gera blob e faz download
   const blob = await Packer.toBlob(doc)
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
