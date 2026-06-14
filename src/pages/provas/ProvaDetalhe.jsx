@@ -2,9 +2,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { buscarProva, registrarUsoProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Printer, Pencil } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil, FileText } from 'lucide-react'
+import { gerarWordProva } from '../../services/gerarWord'
 import { useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
+import toast from 'react-hot-toast'
 import styles from './ProvaDetalhe.module.css'
 
 export default function ProvaDetalhe() {
@@ -21,6 +23,18 @@ export default function ProvaDetalhe() {
   useEffect(() => {
     if (id) registrarUsoProva(id)
   }, [id])
+
+  async function handleWord() {
+    try {
+      toast.loading('Gerando Word...')
+      await gerarWordProva(prova)
+      toast.dismiss()
+      toast.success('Arquivo Word gerado!')
+    } catch (err) {
+      toast.dismiss()
+      toast.error('Erro ao gerar Word: ' + err.message)
+    }
+  }
 
   function handleImprimir() {
     const cfg = prova.cfg_impressao || {}
@@ -71,7 +85,7 @@ export default function ProvaDetalhe() {
   <meta charset="UTF-8"/>
   <title>${prova.titulo}</title>
   <style>
-    @page { size: A4; margin: 12mm; }
+    @page { size: A4; margin: 8mm 12mm 10mm 12mm; }
     * { box-sizing: border-box; }
     body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 0; color: #000; }
     img { max-width: 100%; height: auto; }
@@ -123,6 +137,9 @@ export default function ProvaDetalhe() {
         <div className={styles.topbarAcoes}>
           <button className={styles.btnSecondary} onClick={handleImprimir}>
             <Printer size={14} /> Imprimir / PDF
+          </button>
+          <button className={styles.btnSecondary} onClick={handleWord}>
+            <FileText size={14} /> Word
           </button>
           {(podeEditar || prova.autor_id === usuario?.id) && (
             <button className={styles.btnSecondary}
