@@ -73,7 +73,8 @@ export async function criarProva(dados, questaoIds) {
     ano_escolar: dados.ano_escolar || null,
     instrucoes: dados.instrucoes || null,
     visibilidade: dados.visibilidade || 'pessoal',
-    cabecalho: dados.cabecalho || {},
+    cabecalho: dados.cabecalho || '',
+    cfg_impressao: dados.cfg_impressao || {},
     autor_id: dados.autor_id,
   }
   const { data: prova, error } = await supabase
@@ -101,7 +102,8 @@ export async function atualizarProva(id, dados, questaoIds) {
     ano_escolar: dados.ano_escolar || null,
     instrucoes: dados.instrucoes || null,
     visibilidade: dados.visibilidade || 'pessoal',
-    cabecalho: dados.cabecalho || {},
+    cabecalho: dados.cabecalho || '',
+    cfg_impressao: dados.cfg_impressao || {},
   }
   const { data: prova, error } = await supabase
     .from('provas')
