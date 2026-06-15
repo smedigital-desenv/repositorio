@@ -90,7 +90,23 @@ export default function Questoes() {
   }
 
   const questoesFiltradas = questoes.filter(q => {
-    const textoOk = !buscaTexto || q.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
+    const termo = buscaTexto.toLowerCase()
+    const textoOk = !buscaTexto || [
+      q.titulo,
+      q.disciplinas?.nome,
+      q.ano_escolar,
+      q.tipo === 'multipla_escolha' ? 'múltipla escolha multipla' : 'dissertativa',
+      q.fonte,
+      q.status,
+      q.perfis?.nome,                                     // autor
+      q.enunciado?.replace(/<[^>]*>/g, ''),               // texto do enunciado sem HTML
+      ...(q.alternativas || []).map(a =>                  // texto das alternativas
+        a.texto?.replace(/<[^>]*>/g, '')
+      ),
+      ...(q.habilidades || []).map(h =>                   // códigos de habilidades
+        `${h.codigo} ${h.descricao}`
+      ),
+    ].some(campo => campo?.toLowerCase().includes(termo))
     if (isProfessor) {
       if (aba === 'minhas') return textoOk && q.autor_id === usuario?.id
       return textoOk && q.status === 'publicado' && q.autor_id !== usuario?.id
@@ -145,7 +161,7 @@ export default function Questoes() {
           <Search size={15} className={styles.searchIcon} />
           <input
             className={styles.searchInput}
-            placeholder="Buscar por título..."
+            placeholder="Buscar por título, disciplina, enunciado, alternativas, autor..."
             value={buscaTexto}
             onChange={e => setBuscaTexto(e.target.value)}
           />
