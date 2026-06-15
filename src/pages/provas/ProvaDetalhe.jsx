@@ -78,30 +78,43 @@ export default function ProvaDetalhe() {
     const semQuebra = cfg.quebrarPagina !== false
     const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
 
-    // ── Monta questões ────────────────────────────────────────
+    // ── Gabarito resumido: "1 - A, 2 - B, ..." ───────────────
+    const linhasGab = (prova.questoes || []).map((q, idx) => {
+      if (q.tipo === 'multipla_escolha') {
+        const correta = q.alternativas?.find(a => a.correta)
+        return correta ? `${idx + 1} - ${correta.letra}` : `${idx + 1} - ?`
+      }
+      if (q.tipo === 'dissertativa' && q.gabarito?.texto) {
+        const txt = q.gabarito.texto.replace(/<[^>]*>/g, '').trim().slice(0, 60)
+        return `${idx + 1} - ${txt}${txt.length >= 60 ? '...' : ''}`
+      }
+      return null
+    }).filter(Boolean)
+
+    // Rodapé fixo no final da página (position:fixed para impressão)
+    const gabRodapeHtml = linhasGab.length > 0
+      ? `<div style="position:fixed;bottom:0;left:12mm;right:12mm;border-top:1.5px solid #000;padding-top:6px;background:#fff;font-size:9pt;font-family:'Times New Roman',serif">
+          <strong>Gabarito:</strong>&nbsp;&nbsp;${linhasGab.join('&nbsp;&nbsp;&nbsp;&nbsp;')}
+        </div>`
+      : ''
+
+    // Espaço no final do body para o gabarito não sobrepor o conteúdo
+    const espacoGab = linhasGab.length > 0
+      ? '<div style="height:40px"></div>'
+      : ''
+
+    // ── Questões ──────────────────────────────────────────────
     const questoesHtml = (prova.questoes || []).map((q, idx) => {
       const alts = q.tipo === 'multipla_escolha' && q.alternativas?.length
-        ? q.alternativas.map(a => {
-            const correta = a.correta
-            const destaque = comGabarito || soGabarito
-              ? correta ? `background:#dcfce7;border-left:3px solid #16a34a;padding-left:6px;border-radius:4px;` : ''
-              : ''
-            return `<div style="display:flex;gap:8px;margin:3px 0;font-size:${fontSize};${destaque}">
-              <span style="font-weight:700;min-width:18px;${correta && destaque ? 'color:#16a34a' : ''}">${a.letra})</span>
+        ? q.alternativas.map(a =>
+            `<div style="display:flex;gap:8px;margin:3px 0;font-size:${fontSize}">
+              <span style="font-weight:700;min-width:18px">${a.letra})</span>
               <span>${a.texto}</span>
-              ${correta && destaque ? '<span style="margin-left:auto;color:#16a34a;font-weight:700">✓</span>' : ''}
             </div>`
-          }).join('')
-        : q.tipo === 'dissertativa' && !soGabarito
+          ).join('')
+        : q.tipo === 'dissertativa'
           ? Array(4).fill('<div style="border-bottom:1px solid #888;height:18px;margin-bottom:10px"></div>').join('')
           : ''
-
-      // Gabarito dissertativo
-      const gabDisp = (comGabarito || soGabarito) && q.tipo === 'dissertativa' && q.gabarito?.texto
-        ? `<div style="margin-top:8px;padding:8px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;font-size:${fontSize}">
-            <strong style="color:#15803d">Gabarito:</strong> ${q.gabarito.texto}
-           </div>`
-        : ''
 
       const dif = q.nivel_dificuldade
         ? `<span style="font-size:9pt;color:#666;margin-left:8px">${'●'.repeat(q.nivel_dificuldade)}${'○'.repeat(5-q.nivel_dificuldade)}</span>`
@@ -116,39 +129,48 @@ export default function ProvaDetalhe() {
             Questão ${idx + 1}${dif}
           </p>
           <div style="font-size:${fontSize};margin-bottom:8px">${q.enunciado}</div>
-          ${alts}${gabDisp}
+          ${alts}
         </div>`
     }).join('')
 
-    // ── Gabarito resumido (só para soGabarito ou comGabarito) ──
-    const respostasMC = (prova.questoes || [])
-      .map((q, idx) => {
-        if (q.tipo !== 'multipla_escolha') return null
-        const correta = q.alternativas?.find(a => a.correta)
-        return correta ? `Q${idx+1}: <strong>${correta.letra}</strong>` : null
-      })
-      .filter(Boolean)
-
-    const gabResumoHtml = respostasMC.length > 0
-      ? `<div style="margin-top:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:10pt">
-          <strong style="color:#15803d">Gabarito:</strong>&nbsp;&nbsp;
-          ${respostasMC.join('&nbsp;&nbsp;&nbsp;')}
-        </div>`
-      : ''
-
-    const instrHtml = prova.instrucoes && !soGabarito
+    const instrHtml = prova.instrucoes
       ? `<div style="font-size:10pt;background:#f8f8f8;border-left:3px solid #999;padding:8px 12px;margin:10px 0">
           <strong>Instruções:</strong> ${prova.instrucoes}
         </div>`
       : ''
 
-    const tituloExtra = soGabarito ? ' — GABARITO' : comGabarito ? ' (com gabarito)' : ''
+    // ── Modo: só gabarito ─────────────────────────────────────
+    if (soGabarito) {
+      const linhasFormatadas = linhasGab.join('<br/>')
+      return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Gabarito — ${prova.titulo}</title>
+  <style>
+    @page { size: A4; margin: 15mm 18mm; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Times New Roman', Times, serif; margin: 0; color: #000; font-size: 12pt; }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;font-size:14pt;font-weight:700;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px">
+    GABARITO — ${prova.titulo}
+  </h2>
+  <p style="font-size:10pt;color:#555;margin-bottom:14px">
+    ${prova.disciplinas?.nome ? prova.disciplinas.nome + ' · ' : ''}${prova.ano_escolar || ''}
+  </p>
+  <div style="font-size:12pt;line-height:2">${linhasFormatadas}</div>
+</body>
+</html>`
+    }
 
+    // ── Modo: prova normal ou com gabarito no rodapé ──────────
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <title>${prova.titulo}${tituloExtra}</title>
+  <title>${prova.titulo}</title>
   <style>
     @page { size: A4; margin: 8mm 12mm 10mm 12mm; }
     * { box-sizing: border-box; }
@@ -158,23 +180,16 @@ export default function ProvaDetalhe() {
   </style>
 </head>
 <body>
-  ${soGabarito ? '' : cabecalhoHtml}
-  ${soGabarito
-    ? `<h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 16px;border-bottom:2px solid #000;padding-bottom:8px">
-        GABARITO — ${prova.titulo}
-       </h2>`
-    : `<h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>`
-  }
+  ${cabecalhoHtml}
+  <h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>
   ${instrHtml}
   <div>${questoesHtml}</div>
-  ${comGabarito
-    ? `<div style="page-break-before:avoid;margin-top:24px">${gabResumoHtml}</div>`
-    : soGabarito ? gabResumoHtml : ''
-  }
-  ${!soGabarito ? `<div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
+  <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
     <span>Total: ${prova.questoes?.length || 0} questões</span>
     <span>Assinatura: ___________________________</span>
-  </div>` : ''}
+  </div>
+  ${espacoGab}
+  ${comGabarito ? gabRodapeHtml : ''}
 </body>
 </html>`
   }
