@@ -201,8 +201,7 @@ export default function Usuarios() {
         </div>
       )}
 
-      {modalAberto && (
-        {/* Modal de disciplinas do formador */}
+      {/* Modal de disciplinas do formador */}
       {modalDisciplinas && (
         <div className={styles.modalOverlay} onClick={() => setModalDisciplinas(null)}>
           <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
@@ -248,7 +247,8 @@ export default function Usuarios() {
         </div>
       )}
 
-      <NovoUsuarioModal
+      {modalAberto && (
+        <NovoUsuarioModal
           onClose={() => setModalAberto(false)}
           onSuccess={() => {
             setModalAberto(false)
