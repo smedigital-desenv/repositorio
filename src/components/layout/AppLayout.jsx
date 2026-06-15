@@ -79,7 +79,7 @@ export default function AppLayout() {
             <BookMarked size={16} />
           </div>
           <div>
-            <div className={styles.logoText}>SME</div>
+            <div className={styles.logoText}>SME Digital</div>
             <div className={styles.logoSub}>Repositório Pedagógico</div>
           </div>
         </div>
