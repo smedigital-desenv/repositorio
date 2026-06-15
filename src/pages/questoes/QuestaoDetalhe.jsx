@@ -42,8 +42,9 @@ export default function QuestaoDetalhe() {
   })
 
   const { data: provas = [] } = useQuery({
-    queryKey: ['provas'],
-    queryFn: () => listarProvas({}),
+    queryKey: ['provas', 'minhas', usuario?.id],
+    queryFn: () => listarProvas({ autor_id: usuario?.id }),
+    enabled: !!usuario,
   })
 
   const addAProva = useMutation({

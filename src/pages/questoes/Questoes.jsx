@@ -55,9 +55,11 @@ export default function Questoes() {
     queryFn: listarDisciplinas,
   })
 
+  // Modal de adicionar à prova: só mostra as provas do próprio professor
   const { data: provas = [] } = useQuery({
-    queryKey: ['provas'],
-    queryFn: () => listarProvas({}),
+    queryKey: ['provas', 'minhas', usuario?.id],
+    queryFn: () => listarProvas({ autor_id: usuario?.id }),
+    enabled: !!usuario,
   })
 
   const addProva = useMutation({
