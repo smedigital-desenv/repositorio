@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listarQuestoes, mudarStatus } from '../../services/questoes'
+import { buscarDisciplinasFormador } from '../../services/usuarios'
 import { useAuth } from '../../contexts/AuthContext'
 import { CheckCircle, XCircle, Clock, ChevronRight, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -13,11 +14,23 @@ export default function Revisao() {
   const [motivoRejeicao, setMotivoRejeicao] = useState('')
   const [mostrarModalRejeitar, setMostrarModalRejeitar] = useState(false)
 
-  const { data: questoes = [], isLoading } = useQuery({
+  // Disciplinas vinculadas ao formador
+  const { data: minhasDisciplinas = [] } = useQuery({
+    queryKey: ['formador-disciplinas', usuario?.id],
+    queryFn: () => buscarDisciplinasFormador(usuario?.id),
+    enabled: !!usuario?.id,
+  })
+
+  const { data: todasQuestoes = [], isLoading } = useQuery({
     queryKey: ['questoes', { status: 'em_revisao' }],
     queryFn: () => listarQuestoes({ status: 'em_revisao' }),
     refetchInterval: 5000,
   })
+
+  // Filtrar por disciplina se o formador tiver disciplinas vinculadas
+  const questoes = minhasDisciplinas.length > 0
+    ? todasQuestoes.filter(q => minhasDisciplinas.includes(q.disciplina_id))
+    : todasQuestoes
 
   const publicar = useMutation({
     mutationFn: (questaoId) => mudarStatus(questaoId, 'publicado', 'Aprovada em revisão'),
