@@ -16,7 +16,8 @@ export async function listarProvas(filtros = {}) {
   if (filtros.disciplina_id)  query = query.eq('disciplina_id', filtros.disciplina_id)
   if (filtros.autor_id)       query = query.eq('autor_id', filtros.autor_id)
   if (filtros.ano_escolar)    query = query.eq('ano_escolar', filtros.ano_escolar)
-  if (filtros.visibilidade)   query = query.eq('visibilidade', filtros.visibilidade)
+  if (filtros.visibilidade)    query = query.eq('visibilidade', filtros.visibilidade)
+  if (filtros.status_revisao)  query = query.eq('status_revisao', filtros.status_revisao)
 
   const { data, error } = await query
 
@@ -75,6 +76,7 @@ export async function criarProva(dados, questaoIds) {
     visibilidade: dados.visibilidade || 'pessoal',
     cabecalho: dados.cabecalho || '',
     cfg_impressao: dados.cfg_impressao || {},
+    status_revisao: dados.status_revisao || 'rascunho',
     autor_id: dados.autor_id,
   }
   const { data: prova, error } = await supabase
@@ -104,6 +106,7 @@ export async function atualizarProva(id, dados, questaoIds) {
     visibilidade: dados.visibilidade || 'pessoal',
     cabecalho: dados.cabecalho || '',
     cfg_impressao: dados.cfg_impressao || {},
+    status_revisao: dados.status_revisao || 'rascunho',
   }
   const { data: prova, error } = await supabase
     .from('provas')
@@ -119,6 +122,14 @@ export async function atualizarProva(id, dados, questaoIds) {
   }
 
   return prova
+}
+
+export async function mudarStatusProva(id, novoStatus, justificativa = null) {
+  const payload = { status_revisao: novoStatus }
+  if (novoStatus === 'publicado') payload.visibilidade = 'rede'
+  if (novoStatus === 'rascunho')  payload.visibilidade = 'pessoal'
+  const { error } = await supabase.from('provas').update(payload).eq('id', id)
+  if (error) throw error
 }
 
 async function salvarQuestoes(provaId, questaoIds) {
