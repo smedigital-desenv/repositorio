@@ -50,6 +50,13 @@ export default function Provas() {
     queryFn: () => listarProvas({ ...filtros, visibilidade: 'pessoal', autor_id: usuario?.id }),
   })
 
+  // Provas em revisão (para formadores/admin)
+  const { data: provasRevisao = [], isLoading: loadingRevisao } = useQuery({
+    queryKey: ['provas', 'revisao'],
+    queryFn: () => listarProvas({ status_revisao: 'em_revisao' }),
+    enabled: podeEditar,
+  })
+
   // Provas da rede (todas com visibilidade=rede)
   const { data: provasRede = [], isLoading: loadingRede } = useQuery({
     queryKey: ['provas', 'rede', filtros],
@@ -65,8 +72,8 @@ export default function Provas() {
     setFiltros(f => { const n = {...f}; if (val) n[key] = val; else delete n[key]; return n })
   }
 
-  const provas = aba === 'minhas' ? minhasProvas : provasRede
-  const isLoading = aba === 'minhas' ? loadingMinhas : loadingRede
+  const provas = aba === 'minhas' ? minhasProvas : aba === 'revisao' ? provasRevisao : provasRede
+  const isLoading = aba === 'minhas' ? loadingMinhas : aba === 'revisao' ? loadingRevisao : loadingRede
 
   const provasFiltradas = provas.filter(p =>
     !buscaTexto || p.titulo?.toLowerCase().includes(buscaTexto.toLowerCase())
@@ -100,13 +107,26 @@ export default function Provas() {
           <Users size={14} /> Provas da rede
           <span className={styles.abaBadge}>{provasRede.length}</span>
         </button>
+        {podeEditar && (
+          <button
+            className={`${styles.aba} ${aba === 'revisao' ? styles.abaAtiva : ''}`}
+            onClick={() => setAba('revisao')}
+          >
+            🔍 Em revisão
+            {provasRevisao.length > 0 && (
+              <span className={`${styles.abaBadge} ${styles.abaBadgeAlerta}`}>{provasRevisao.length}</span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Descrição da aba */}
       <p className={styles.abaDesc}>
         {aba === 'minhas'
           ? 'Provas criadas por você. Visíveis apenas para você.'
-          : 'Provas compartilhadas por formadores para toda a rede. Qualquer professor pode usar.'}
+          : aba === 'revisao'
+          ? 'Provas enviadas por professores aguardando sua avaliação para serem publicadas na rede.'
+          : 'Provas compartilhadas para toda a rede. Qualquer professor pode usar.'}
       </p>
 
       {/* Busca e filtros */}

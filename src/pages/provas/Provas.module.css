@@ -127,3 +127,9 @@
 }
 .tipoRede { background: #EEF2FF; color: #4338CA; }
 .tipoPessoal { background: var(--bg-subtle); color: var(--text-tertiary); }
+
+.abaBadgeAlerta {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a;
+}

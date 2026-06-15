@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { buscarProva, registrarUsoProva, criarProva } from '../../services/provas'
+import { buscarProva, registrarUsoProva, criarProva, mudarStatusProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks, Clock, CheckCircle, XCircle, Send } from 'lucide-react'
 import { gerarWordProva } from '../../services/gerarWord'
 import { useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
@@ -41,6 +41,16 @@ export default function ProvaDetalhe() {
       setTimeout(() => navigate(`/provas/${novaProva.id}/editar`), 1200)
     },
     onError: (err) => toast.error('Erro ao copiar: ' + err.message),
+  })
+
+  const mutarStatus = useMutation({
+    mutationFn: ({ status, justificativa }) => mudarStatusProva(id, status, justificativa),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['prova', id])
+      queryClient.invalidateQueries(['provas'])
+      toast.success('Status atualizado!')
+    },
+    onError: (err) => toast.error('Erro: ' + err.message),
   })
 
   const { data: prova, isLoading } = useQuery({
@@ -262,6 +272,86 @@ export default function ProvaDetalhe() {
           )}
         </div>
       </div>
+
+      {/* Painel de revisão — não aparece na impressão */}
+      {(prova.autor_id === usuario?.id || podeEditar) && (
+        <div className={styles.revisaoBar}>
+
+          {/* Professor — dono da prova */}
+          {prova.autor_id === usuario?.id && !podeEditar && (
+            <div className={styles.revisaoContent}>
+              <div className={`${styles.revisaoStatus} ${styles['rs_' + (prova.status_revisao || 'rascunho')]}`}>
+                {prova.status_revisao === 'em_revisao'
+                  ? <><Clock size={14}/> Aguardando revisão de um formador</>
+                  : prova.status_revisao === 'publicado'
+                  ? <><CheckCircle size={14}/> Disponível na rede para todos os professores</>
+                  : <><Clock size={14}/> Rascunho — apenas você tem acesso</>
+                }
+              </div>
+              {(!prova.status_revisao || prova.status_revisao === 'rascunho') && (
+                <div className={styles.revisaoAcao}>
+                  <p className={styles.revisaoHint}>
+                    Quer disponibilizar esta prova para outros professores? Envie para avaliação dos formadores.
+                  </p>
+                  <button className={styles.btnEnviar}
+                    onClick={() => {
+                      if (confirm('Enviar esta prova para avaliação dos formadores?'))
+                        mutarStatus.mutate({ status: 'em_revisao' })
+                    }}
+                    disabled={mutarStatus.isPending}>
+                    <Send size={13}/> Enviar para avaliação
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Formador/Admin — controle completo */}
+          {podeEditar && (
+            <div className={styles.revisaoContent}>
+              <span className={styles.revisaoLabel}>Revisão da prova:</span>
+              <div className={styles.revisaoAcoes}>
+                {prova.status_revisao === 'em_revisao' && (
+                  <>
+                    <button className={styles.btnAprovarProva}
+                      onClick={() => mutarStatus.mutate({ status: 'publicado' })}
+                      disabled={mutarStatus.isPending}>
+                      <CheckCircle size={13}/> Publicar na rede
+                    </button>
+                    <button className={styles.btnRejeitarProva}
+                      onClick={() => {
+                        const motivo = window.prompt('Motivo da devolução:')
+                        if (motivo) mutarStatus.mutate({ status: 'rascunho', justificativa: motivo })
+                      }}
+                      disabled={mutarStatus.isPending}>
+                      <XCircle size={13}/> Devolver ao professor
+                    </button>
+                  </>
+                )}
+                {(!prova.status_revisao || prova.status_revisao === 'rascunho') && (
+                  <button className={styles.btnAprovarProva}
+                    onClick={() => mutarStatus.mutate({ status: 'publicado' })}
+                    disabled={mutarStatus.isPending}>
+                    <CheckCircle size={13}/> Publicar diretamente na rede
+                  </button>
+                )}
+                {prova.status_revisao === 'publicado' && (
+                  <button className={styles.btnRejeitarProva}
+                    onClick={() => mutarStatus.mutate({ status: 'rascunho' })}
+                    disabled={mutarStatus.isPending}>
+                    <XCircle size={13}/> Retirar da rede
+                  </button>
+                )}
+                <span className={`${styles.revisaoStatusBadge} ${styles['rs_' + (prova.status_revisao || 'rascunho')]}`}>
+                  {prova.status_revisao === 'em_revisao' ? '🔍 Em revisão'
+                   : prova.status_revisao === 'publicado' ? '✅ Na rede'
+                   : '📝 Rascunho'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Conteúdo imprimível */}
       <div className={styles.printArea} style={{ fontSize }}>
