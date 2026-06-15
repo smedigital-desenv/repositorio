@@ -253,3 +253,95 @@
 }
 .btnRejeitarProva:hover:not(:disabled) { background: #991b1b; color: white; }
 .btnRejeitarProva:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Seletor de modo ── */
+.modoGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modoLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.modoBtns {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.modoBtn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.modoBtn:last-child { border-right: none; }
+.modoBtn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.modoBtnOn {
+  background: var(--color-primary) !important;
+  color: white !important;
+  font-weight: 700;
+}
+
+.topbarSep {
+  width: 1px;
+  height: 28px;
+  background: var(--border-subtle);
+  margin: 0 2px;
+}
+
+/* ── Modo só gabarito ── */
+.soGabarito {
+  padding: 8px 0;
+}
+.gabTitulo {
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.gabMeta {
+  text-align: center;
+  font-size: 10pt;
+  color: #555;
+  margin-bottom: 18px;
+}
+.gabLista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gabLinha {
+  font-size: 12pt;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+  line-height: 1.8;
+}
+.gabVazio {
+  color: #888;
+  font-style: italic;
+}
+
+/* ── Gabarito no rodapé (modo com_gabarito) ── */
+.gabRodape {
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1.5px solid #000;
+  font-size: 9pt;
+  font-family: 'Times New Roman', serif;
+  color: #000;
+  line-height: 1.6;
+}

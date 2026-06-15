@@ -4,7 +4,7 @@ import { buscarProva, registrarUsoProva, criarProva, mudarStatusProva } from '..
 import { useAuth } from '../../contexts/AuthContext'
 import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks, Clock, CheckCircle, XCircle, Send } from 'lucide-react'
 import { gerarWordProva } from '../../services/gerarWord'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
 import toast from 'react-hot-toast'
 import styles from './ProvaDetalhe.module.css'
@@ -229,6 +229,18 @@ export default function ProvaDetalhe() {
   const semQuebra = cfg.quebrarPagina !== false
   const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
 
+  // Modo de visualização na tela: 'normal' | 'gabarito' | 'com_gabarito'
+  const [modoVisualizacao, setModoVisualizacao] = useState('normal')
+
+  // Gabarito das questões para exibição na tela
+  const gabarito = (prova.questoes || []).map((q, idx) => {
+    if (q.tipo === 'multipla_escolha') {
+      const correta = q.alternativas?.find(a => a.correta)
+      return correta ? `${idx + 1} - ${correta.letra}` : null
+    }
+    return null
+  }).filter(Boolean)
+
   return (
     <div className={styles.page}>
       {/* Topbar — não aparece na impressão */}
@@ -244,14 +256,36 @@ export default function ProvaDetalhe() {
           </span>
         </div>
         <div className={styles.topbarAcoes}>
-          <button className={styles.btnSecondary} onClick={handleImprimir}>
+          {/* Seletor de modo de visualização */}
+          <div className={styles.modoGroup}>
+            <span className={styles.modoLabel}>Visualizar:</span>
+            <div className={styles.modoBtns}>
+              <button
+                className={`${styles.modoBtn} ${modoVisualizacao === 'normal' ? styles.modoBtnOn : ''}`}
+                onClick={() => setModoVisualizacao('normal')}>
+                Prova
+              </button>
+              <button
+                className={`${styles.modoBtn} ${modoVisualizacao === 'com_gabarito' ? styles.modoBtnOn : ''}`}
+                onClick={() => setModoVisualizacao('com_gabarito')}>
+                + Gabarito
+              </button>
+              <button
+                className={`${styles.modoBtn} ${modoVisualizacao === 'gabarito' ? styles.modoBtnOn : ''}`}
+                onClick={() => setModoVisualizacao('gabarito')}>
+                Só gabarito
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.topbarSep} />
+
+          <button className={styles.btnSecondary} onClick={() => {
+            if (modoVisualizacao === 'com_gabarito') handleImprimirComGabarito()
+            else if (modoVisualizacao === 'gabarito') handleGabarito()
+            else handleImprimir()
+          }}>
             <Printer size={14} /> Imprimir / PDF
-          </button>
-          <button className={styles.btnSecondary} onClick={handleImprimirComGabarito}>
-            <ListChecks size={14} /> Com gabarito
-          </button>
-          <button className={styles.btnSecondary} onClick={handleGabarito}>
-            <BookOpen size={14} /> Só gabarito
           </button>
           <button className={styles.btnSecondary} onClick={handleWord}>
             <FileText size={14} /> Word
@@ -356,18 +390,36 @@ export default function ProvaDetalhe() {
       {/* Conteúdo imprimível */}
       <div className={styles.printArea} style={{ fontSize }}>
 
-        {/* Cabeçalho HTML personalizado */}
-        <div className={styles.cabecalho}
-          dangerouslySetInnerHTML={{ __html: cabecalhoHtml }} />
-
-        {/* Título da prova */}
-        <h1 className={styles.tituloprova}>{prova.titulo}</h1>
-
-        {prova.instrucoes && (
-          <div className={styles.instrucoes}>
-            <strong>Instruções:</strong> {prova.instrucoes}
+        {/* Modo: Só gabarito */}
+        {modoVisualizacao === 'gabarito' ? (
+          <div className={styles.soGabarito}>
+            <h2 className={styles.gabTitulo}>GABARITO — {prova.titulo}</h2>
+            {prova.disciplinas?.nome && (
+              <p className={styles.gabMeta}>{prova.disciplinas.nome}{prova.ano_escolar ? ` · ${prova.ano_escolar}` : ''}</p>
+            )}
+            <div className={styles.gabLista}>
+              {gabarito.map((linha, i) => (
+                <div key={i} className={styles.gabLinha}>{linha}</div>
+              ))}
+              {gabarito.length === 0 && (
+                <p className={styles.gabVazio}>Nenhuma questão com gabarito definido.</p>
+              )}
+            </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Cabeçalho HTML personalizado */}
+            <div className={styles.cabecalho}
+              dangerouslySetInnerHTML={{ __html: cabecalhoHtml }} />
+
+            {/* Título da prova */}
+            <h1 className={styles.tituloprova}>{prova.titulo}</h1>
+
+            {prova.instrucoes && (
+              <div className={styles.instrucoes}>
+                <strong>Instruções:</strong> {prova.instrucoes}
+              </div>
+            )}
 
         {/* Questões */}
         <div className={styles.questoes}>
@@ -424,6 +476,16 @@ export default function ProvaDetalhe() {
           <span>Total: {prova.questoes?.length || 0} questões</span>
           <span>Assinatura: ___________________________</span>
         </div>
+
+        {/* Gabarito no rodapé — modo com_gabarito */}
+        {modoVisualizacao === 'com_gabarito' && gabarito.length > 0 && (
+          <div className={styles.gabRodape}>
+            <strong>Gabarito:</strong>{' '}
+            {gabarito.join('    ')}
+          </div>
+        )}
+          </>
+        )}
       </div>
     </div>
   )
