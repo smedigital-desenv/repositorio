@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buscarProva, registrarUsoProva, criarProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Printer, Pencil, FileText, Copy } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks } from 'lucide-react'
 import { gerarWordProva } from '../../services/gerarWord'
 import { useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
@@ -65,28 +65,47 @@ export default function ProvaDetalhe() {
   }
 
   function handleImprimir() {
+    abrirJanela(buildHtml(prova), prova.titulo)
+  }
+
+
+
+  function buildHtml(prova, opcoes = {}) {
+    const { comGabarito = false, soGabarito = false } = opcoes
     const cfg = prova.cfg_impressao || {}
     const fontSize = cfg.tamanhoFonte ? `${cfg.tamanhoFonte}pt` : '11pt'
     const separador = cfg.separadorQuestoes !== false
     const semQuebra = cfg.quebrarPagina !== false
     const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
 
+    // ── Monta questões ────────────────────────────────────────
     const questoesHtml = (prova.questoes || []).map((q, idx) => {
       const alts = q.tipo === 'multipla_escolha' && q.alternativas?.length
-        ? q.alternativas.map(a =>
-            `<div style="display:flex;gap:8px;margin:3px 0;font-size:${fontSize}">
-              <span style="font-weight:700;min-width:18px">${a.letra})</span>
+        ? q.alternativas.map(a => {
+            const correta = a.correta
+            const destaque = comGabarito || soGabarito
+              ? correta ? `background:#dcfce7;border-left:3px solid #16a34a;padding-left:6px;border-radius:4px;` : ''
+              : ''
+            return `<div style="display:flex;gap:8px;margin:3px 0;font-size:${fontSize};${destaque}">
+              <span style="font-weight:700;min-width:18px;${correta && destaque ? 'color:#16a34a' : ''}">${a.letra})</span>
               <span>${a.texto}</span>
+              ${correta && destaque ? '<span style="margin-left:auto;color:#16a34a;font-weight:700">✓</span>' : ''}
             </div>`
-          ).join('')
-        : q.tipo === 'dissertativa'
+          }).join('')
+        : q.tipo === 'dissertativa' && !soGabarito
           ? Array(4).fill('<div style="border-bottom:1px solid #888;height:18px;margin-bottom:10px"></div>').join('')
           : ''
+
+      // Gabarito dissertativo
+      const gabDisp = (comGabarito || soGabarito) && q.tipo === 'dissertativa' && q.gabarito?.texto
+        ? `<div style="margin-top:8px;padding:8px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;font-size:${fontSize}">
+            <strong style="color:#15803d">Gabarito:</strong> ${q.gabarito.texto}
+           </div>`
+        : ''
 
       const dif = q.nivel_dificuldade
         ? `<span style="font-size:9pt;color:#666;margin-left:8px">${'●'.repeat(q.nivel_dificuldade)}${'○'.repeat(5-q.nivel_dificuldade)}</span>`
         : ''
-
       const sep = separador && idx > 0
         ? `<hr style="border:none;border-top:1px solid #ddd;margin:14px 0"/>`
         : idx > 0 ? '<div style="margin-top:16px"></div>' : ''
@@ -97,21 +116,39 @@ export default function ProvaDetalhe() {
             Questão ${idx + 1}${dif}
           </p>
           <div style="font-size:${fontSize};margin-bottom:8px">${q.enunciado}</div>
-          ${alts}
+          ${alts}${gabDisp}
         </div>`
     }).join('')
 
-    const instrHtml = prova.instrucoes
+    // ── Gabarito resumido (só para soGabarito ou comGabarito) ──
+    const respostasMC = (prova.questoes || [])
+      .map((q, idx) => {
+        if (q.tipo !== 'multipla_escolha') return null
+        const correta = q.alternativas?.find(a => a.correta)
+        return correta ? `Q${idx+1}: <strong>${correta.letra}</strong>` : null
+      })
+      .filter(Boolean)
+
+    const gabResumoHtml = respostasMC.length > 0
+      ? `<div style="margin-top:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:10pt">
+          <strong style="color:#15803d">Gabarito:</strong>&nbsp;&nbsp;
+          ${respostasMC.join('&nbsp;&nbsp;&nbsp;')}
+        </div>`
+      : ''
+
+    const instrHtml = prova.instrucoes && !soGabarito
       ? `<div style="font-size:10pt;background:#f8f8f8;border-left:3px solid #999;padding:8px 12px;margin:10px 0">
           <strong>Instruções:</strong> ${prova.instrucoes}
         </div>`
       : ''
 
-    const html = `<!DOCTYPE html>
+    const tituloExtra = soGabarito ? ' — GABARITO' : comGabarito ? ' (com gabarito)' : ''
+
+    return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <title>${prova.titulo}</title>
+  <title>${prova.titulo}${tituloExtra}</title>
   <style>
     @page { size: A4; margin: 8mm 12mm 10mm 12mm; }
     * { box-sizing: border-box; }
@@ -121,22 +158,41 @@ export default function ProvaDetalhe() {
   </style>
 </head>
 <body>
-  ${cabecalhoHtml}
-  <h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>
+  ${soGabarito ? '' : cabecalhoHtml}
+  ${soGabarito
+    ? `<h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 16px;border-bottom:2px solid #000;padding-bottom:8px">
+        GABARITO — ${prova.titulo}
+       </h2>`
+    : `<h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>`
+  }
   ${instrHtml}
   <div>${questoesHtml}</div>
-  <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
+  ${comGabarito
+    ? `<div style="page-break-before:avoid;margin-top:24px">${gabResumoHtml}</div>`
+    : soGabarito ? gabResumoHtml : ''
+  }
+  ${!soGabarito ? `<div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
     <span>Total: ${prova.questoes?.length || 0} questões</span>
     <span>Assinatura: ___________________________</span>
-  </div>
+  </div>` : ''}
 </body>
 </html>`
+  }
 
+  function abrirJanela(html, titulo) {
     const win = window.open('', '_blank')
     win.document.write(html)
     win.document.close()
     win.focus()
     setTimeout(() => { win.print() }, 400)
+  }
+
+  function handleImprimirComGabarito() {
+    abrirJanela(buildHtml(prova, { comGabarito: true }), prova.titulo)
+  }
+
+  function handleGabarito() {
+    abrirJanela(buildHtml(prova, { soGabarito: true }), `Gabarito — ${prova.titulo}`)
   }
 
   if (isLoading) return <div className={styles.loading}>Carregando prova...</div>
@@ -165,6 +221,12 @@ export default function ProvaDetalhe() {
         <div className={styles.topbarAcoes}>
           <button className={styles.btnSecondary} onClick={handleImprimir}>
             <Printer size={14} /> Imprimir / PDF
+          </button>
+          <button className={styles.btnSecondary} onClick={handleImprimirComGabarito}>
+            <ListChecks size={14} /> Com gabarito
+          </button>
+          <button className={styles.btnSecondary} onClick={handleGabarito}>
+            <BookOpen size={14} /> Só gabarito
           </button>
           <button className={styles.btnSecondary} onClick={handleWord}>
             <FileText size={14} /> Word
