@@ -43,6 +43,8 @@ export default function ProvaDetalhe() {
     onError: (err) => toast.error('Erro ao copiar: ' + err.message),
   })
 
+  const [modoVisualizacao, setModoVisualizacao] = useState('normal')
+
   const mutarStatus = useMutation({
     mutationFn: ({ status, justificativa }) => mudarStatusProva(id, status, justificativa),
     onSuccess: () => {
@@ -229,10 +231,6 @@ export default function ProvaDetalhe() {
   const semQuebra = cfg.quebrarPagina !== false
   const cabecalhoHtml = prova.cabecalho || CABECALHO_PADRAO
 
-  // Modo de visualização na tela: 'normal' | 'gabarito' | 'com_gabarito'
-  const [modoVisualizacao, setModoVisualizacao] = useState('normal')
-
-  // Gabarito das questões para exibição na tela
   const gabarito = (prova.questoes || []).map((q, idx) => {
     if (q.tipo === 'multipla_escolha') {
       const correta = q.alternativas?.find(a => a.correta)
