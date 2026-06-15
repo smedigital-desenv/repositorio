@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listarUsuarios, alterarPapel, toggleUsuario } from '../../services/usuarios'
+import { listarUsuarios, alterarPapel, toggleUsuario, vincularDisciplinas } from '../../services/usuarios'
+import { listarDisciplinas } from '../../services/questoes'
 import { useAuth } from '../../contexts/AuthContext'
 import { UserPlus, Search, Shield, UserCheck, UserX, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -19,6 +20,12 @@ export default function Usuarios() {
   const [busca, setBusca] = useState('')
   const [filtroPapel, setFiltroPapel] = useState('')
   const [modalAberto, setModalAberto] = useState(false)
+  const [modalDisciplinas, setModalDisciplinas] = useState(null) // usuario
+
+  const { data: disciplinas = [] } = useQuery({
+    queryKey: ['disciplinas'],
+    queryFn: listarDisciplinas,
+  })
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -32,6 +39,16 @@ export default function Usuarios() {
       toast.success('Papel atualizado')
     },
     onError: () => toast.error('Erro ao atualizar papel'),
+  })
+
+  const mutarDisciplinas = useMutation({
+    mutationFn: ({ id, disciplinasIds }) => vincularDisciplinas(id, disciplinasIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['usuarios'])
+      toast.success('Disciplinas atualizadas!')
+      setModalDisciplinas(null)
+    },
+    onError: () => toast.error('Erro ao vincular disciplinas'),
   })
 
   const mutarToggle = useMutation({
@@ -101,6 +118,7 @@ export default function Usuarios() {
                 <th>E-mail</th>
                 <th>Papel</th>
                 <th>Escola</th>
+                <th>Disciplinas</th>
                 <th>Status</th>
                 {isAdmin && <th>Ações</th>}
               </tr>
@@ -108,7 +126,7 @@ export default function Usuarios() {
             <tbody>
               {usuariosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className={styles.vazio}>
+                  <td colSpan={isAdmin ? 7 : 6} className={styles.vazio}>
                     Nenhum usuário encontrado
                   </td>
                 </tr>
@@ -143,6 +161,20 @@ export default function Usuarios() {
                     </td>
                     <td className={styles.escola}>{u.escola_nome || '—'}</td>
                     <td>
+                      {u.papel === 'formador' ? (
+                        <button
+                          className={styles.vincularBtn}
+                          onClick={() => setModalDisciplinas(u)}
+                          title="Vincular disciplinas">
+                          {u.disciplinas_ids?.length
+                            ? `${u.disciplinas_ids.length} disciplina(s)`
+                            : '— Vincular'}
+                        </button>
+                      ) : (
+                        <span className={styles.naDisp}>—</span>
+                      )}
+                    </td>
+                    <td>
                       <span className={`${styles.statusBadge} ${u.ativo ? styles.ativo : styles.inativo}`}>
                         {u.ativo ? 'Ativo' : 'Inativo'}
                       </span>
@@ -170,7 +202,53 @@ export default function Usuarios() {
       )}
 
       {modalAberto && (
-        <NovoUsuarioModal
+        {/* Modal de disciplinas do formador */}
+      {modalDisciplinas && (
+        <div className={styles.modalOverlay} onClick={() => setModalDisciplinas(null)}>
+          <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.modalTitulo}>Disciplinas do formador</h3>
+                <p className={styles.modalSub}>{modalDisciplinas.nome}</p>
+              </div>
+              <button className={styles.modalClose} onClick={() => setModalDisciplinas(null)}>✕</button>
+            </div>
+            <p className={styles.modalDesc}>
+              Selecione as disciplinas pelas quais este formador será responsável por revisar questões e provas.
+            </p>
+            <div className={styles.disciplinasGrid}>
+              {disciplinas.map(d => {
+                const selecionada = (modalDisciplinas.disciplinas_ids || []).includes(d.id)
+                return (
+                  <button key={d.id} type="button"
+                    className={`${styles.discChip} ${selecionada ? styles.discChipOn : ''}`}
+                    onClick={() => setModalDisciplinas(prev => ({
+                      ...prev,
+                      disciplinas_ids: selecionada
+                        ? (prev.disciplinas_ids || []).filter(x => x !== d.id)
+                        : [...(prev.disciplinas_ids || []), d.id]
+                    }))}>
+                    {d.nome}
+                  </button>
+                )
+              })}
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.btnSecondary} onClick={() => setModalDisciplinas(null)}>Cancelar</button>
+              <button className={styles.btnPrimary}
+                disabled={mutarDisciplinas.isPending}
+                onClick={() => mutarDisciplinas.mutate({
+                  id: modalDisciplinas.id,
+                  disciplinasIds: modalDisciplinas.disciplinas_ids || [],
+                })}>
+                {mutarDisciplinas.isPending ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <NovoUsuarioModal
           onClose={() => setModalAberto(false)}
           onSuccess={() => {
             setModalAberto(false)
