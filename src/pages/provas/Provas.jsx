@@ -51,6 +51,13 @@ export default function Provas() {
     queryFn: () => listarProvas({ ...filtros, visibilidade: 'pessoal', autor_id: usuario?.id }),
   })
 
+  // Disciplinas vinculadas ao formador logado
+  const { data: minhasDisciplinas = [] } = useQuery({
+    queryKey: ['formador-disciplinas', usuario?.id],
+    queryFn: () => buscarDisciplinasFormador(usuario?.id),
+    enabled: !!usuario?.id && podeEditar,
+  })
+
   // Provas em revisão (para formadores/admin) — filtradas pela disciplina do formador
   const { data: todasProvasRevisao = [], isLoading: loadingRevisao } = useQuery({
     queryKey: ['provas', 'revisao'],
@@ -69,13 +76,6 @@ export default function Provas() {
   const { data: provasRede = [], isLoading: loadingRede } = useQuery({
     queryKey: ['provas', 'rede', filtros],
     queryFn: () => listarProvas({ ...filtros, visibilidade: 'rede' }),
-  })
-
-  // Disciplinas vinculadas ao formador logado
-  const { data: minhasDisciplinas = [] } = useQuery({
-    queryKey: ['formador-disciplinas', usuario?.id],
-    queryFn: () => buscarDisciplinasFormador(usuario?.id),
-    enabled: !!usuario?.id && podeEditar,
   })
 
   const { data: disciplinas = [] } = useQuery({
