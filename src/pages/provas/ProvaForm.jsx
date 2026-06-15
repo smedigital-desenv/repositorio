@@ -30,6 +30,8 @@ export default function ProvaForm() {
     tamanhoFonte: 11,
     separadorQuestoes: true,
     quebrarPagina: false,
+    rodapeEsquerda: 'Total: {total} questões',
+    rodapeDireita: 'Assinatura: ___________________________',
   })
   const [questoes, setQuestoes] = useState([])
   const [buscaTexto, setBuscaTexto] = useState('')
@@ -56,7 +58,14 @@ export default function ProvaForm() {
       })
       setQuestoes(provaExistente.questoes?.map(q => q.id) || [])
       setCabecalho(provaExistente.cabecalho || CABECALHO_PADRAO)
-      if (provaExistente.cfg_impressao) setCfgImpressao(provaExistente.cfg_impressao)
+      if (provaExistente.cfg_impressao) setCfgImpressao({
+        tamanhoFonte: 11,
+        separadorQuestoes: true,
+        quebrarPagina: false,
+        rodapeEsquerda: 'Total: {total} questões',
+        rodapeDireita: 'Assinatura: ___________________________',
+        ...provaExistente.cfg_impressao,
+      })
     }
   }, [provaExistente])
 
@@ -186,6 +195,25 @@ export default function ProvaForm() {
                     onChange={e => setCfgImpressao(c => ({...c, quebrarPagina: e.target.checked}))} />
                   Evitar quebra de página dentro de uma questão
                 </label>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label}>Rodapé — lado esquerdo</label>
+                <input className={styles.input}
+                  placeholder="Ex: Total: {total} questões"
+                  value={cfgImpressao.rodapeEsquerda ?? 'Total: {total} questões'}
+                  onChange={e => setCfgImpressao(c => ({...c, rodapeEsquerda: e.target.value}))}
+                />
+                <span className={styles.cfgHint}>Use <code>{'{total}'}</code> para número de questões</span>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label}>Rodapé — lado direito</label>
+                <input className={styles.input}
+                  placeholder="Ex: Assinatura: ___________________________"
+                  value={cfgImpressao.rodapeDireita ?? 'Assinatura: ___________________________'}
+                  onChange={e => setCfgImpressao(c => ({...c, rodapeDireita: e.target.value}))}
+                />
               </div>
             </div>
           </div>

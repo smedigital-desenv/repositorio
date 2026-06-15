@@ -103,16 +103,21 @@ export default function ProvaDetalhe() {
       return null
     }).filter(Boolean)
 
-    // Rodapé fixo no final da página (position:fixed para impressão)
-    const gabRodapeHtml = linhasGab.length > 0
-      ? `<div style="position:fixed;bottom:0;left:12mm;right:12mm;border-top:1.5px solid #000;padding-top:6px;background:#fff;font-size:9pt;font-family:'Times New Roman',serif">
-          <strong>Gabarito:</strong>&nbsp;&nbsp;${linhasGab.join('&nbsp;&nbsp;&nbsp;&nbsp;')}
-        </div>`
-      : ''
+    // Rodapé configurável
+    const rodapeEsq = (cfg.rodapeEsquerda ?? 'Total: {total} questões')
+      .replace('{total}', String((prova.questoes || []).length))
+    const rodapeDir = cfg.rodapeDireita ?? 'Assinatura: ___________________________'
+    const rodapeHtml = `<div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
+      <span>${rodapeEsq}</span><span>${rodapeDir}</span>
+    </div>`
 
-    // Espaço no final do body para o gabarito não sobrepor o conteúdo
-    const espacoGab = linhasGab.length > 0
-      ? '<div style="height:40px"></div>'
+    // Gabarito fixo no rodapé da ÚLTIMA página
+    // position:fixed + bottom:0 garante que fica sempre no fim da última página no print
+    const gabRodapeHtml = linhasGab.length > 0
+      ? `<div style="position:fixed;bottom:0;left:0;right:0;padding:6px 12mm 4px;border-top:1.5px solid #000;background:#fff;font-size:9pt;font-family:'Times New Roman',serif;color:#000">
+          <strong>Gabarito:</strong>&nbsp;&nbsp;${linhasGab.join('&nbsp;&nbsp;&nbsp;&nbsp;')}
+        </div>
+        <div style="height:32px"></div>`
       : ''
 
     // ── Questões ──────────────────────────────────────────────
@@ -196,11 +201,7 @@ export default function ProvaDetalhe() {
   <h2 style="text-align:center;font-size:14pt;font-weight:700;margin:12px 0 6px">${prova.titulo}</h2>
   ${instrHtml}
   <div>${questoesHtml}</div>
-  <div style="display:flex;justify-content:space-between;margin-top:24px;padding-top:8px;border-top:1px solid #ccc;font-size:9pt;color:#555">
-    <span>Total: ${prova.questoes?.length || 0} questões</span>
-    <span>Assinatura: ___________________________</span>
-  </div>
-  ${espacoGab}
+  ${rodapeHtml}
   ${comGabarito ? gabRodapeHtml : ''}
 </body>
 </html>`
@@ -470,12 +471,18 @@ export default function ProvaDetalhe() {
           )}
         </div>
 
-        <div className={styles.rodape}>
-          <span>Total: {prova.questoes?.length || 0} questões</span>
-          <span>Assinatura: ___________________________</span>
-        </div>
+        {/* Rodapé configurável */}
+        {(cfg.rodapeEsquerda !== '' || cfg.rodapeDireita !== '') && (
+          <div className={styles.rodape}>
+            <span>
+              {(cfg.rodapeEsquerda ?? 'Total: {total} questões')
+                .replace('{total}', String(prova.questoes?.length || 0))}
+            </span>
+            <span>{cfg.rodapeDireita ?? 'Assinatura: ___________________________'}</span>
+          </div>
+        )}
 
-        {/* Gabarito no rodapé — modo com_gabarito */}
+        {/* Gabarito no rodapé — modo com_gabarito (exibição na tela) */}
         {modoVisualizacao === 'com_gabarito' && gabarito.length > 0 && (
           <div className={styles.gabRodape}>
             <strong>Gabarito:</strong>{' '}

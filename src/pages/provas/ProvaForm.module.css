@@ -144,3 +144,17 @@
   font-size: 13px; color: var(--text-secondary); cursor: pointer;
 }
 .cfgCheck input { accent-color: var(--color-primary); width: 15px; height: 15px; cursor: pointer; }
+
+.cfgHint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  display: block;
+}
+.cfgHint code {
+  background: var(--bg-subtle);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--color-primary);
+}
