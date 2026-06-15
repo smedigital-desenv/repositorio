@@ -75,3 +75,21 @@ export async function convidarUsuario(email, nome, papel) {
 
   if (authError) throw authError
 }
+
+export async function vincularDisciplinas(usuarioId, disciplinasIds) {
+  const { error } = await supabase
+    .from('perfis')
+    .update({ disciplinas_ids: disciplinasIds })
+    .eq('id', usuarioId)
+  if (error) throw error
+}
+
+export async function buscarDisciplinasFormador(usuarioId) {
+  const { data, error } = await supabase
+    .from('perfis')
+    .select('disciplinas_ids')
+    .eq('id', usuarioId)
+    .single()
+  if (error) throw error
+  return data?.disciplinas_ids || []
+}
