@@ -147,10 +147,21 @@ export default function QuestaoDetalhe() {
             </div>
             <h1 className={styles.titulo}>{questao.titulo}</h1>
             <div className={styles.meta}>
-              <span>Por {questao.perfis?.nome}</span>
+              <span>Criada por <strong>{questao.perfis?.nome ?? '—'}</strong></span>
               <span>·</span>
               <span>{new Date(questao.criado_em).toLocaleDateString('pt-BR')}</span>
               {questao.fonte && <><span>·</span><span>Fonte: {questao.fonte}</span></>}
+            </div>
+            <div className={styles.autoria}>
+              <span className={styles.autoriaItem}>
+                <CheckCircle size={13} className={questao.validacao ? styles.autoriaOk : styles.autoriaPend} />
+                {questao.validacao ? (
+                  <>Validada por <strong>{questao.validacao.nome ?? '—'}</strong>
+                  {' em '}{new Date(questao.validacao.em).toLocaleDateString('pt-BR')}</>
+                ) : (
+                  <span className={styles.autoriaPendTxt}>Ainda não validada</span>
+                )}
+              </span>
             </div>
           </div>
 

@@ -57,12 +57,22 @@ export async function buscarQuestao(id) {
       questao_gabaritos(id, texto, criterios),
       questao_habilidades(habilidades(id, codigo, descricao, ano_escolar)),
       avaliacoes(nota, autor_id),
-      comentarios(id, texto, criado_em, arquivado_em, perfis(nome))
+      comentarios(id, texto, criado_em, arquivado_em, perfis(nome)),
+      aprovacoes(status_novo, justificativa, criado_em, perfis(nome))
     `)
     .eq('id', id)
     .single()
 
   if (error) throw error
+
+  // Quem validou = autor da última aprovação que publicou a questão
+  const publicacoes = (data.aprovacoes ?? [])
+    .filter(a => a.status_novo === 'publicado')
+    .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
+  const validacao = publicacoes[0]
+    ? { nome: publicacoes[0].perfis?.nome ?? null, em: publicacoes[0].criado_em }
+    : null
+
   return {
     ...data,
     alternativas: data.questao_alternativas?.sort((a, b) => a.ordem - b.ordem) ?? [],
@@ -72,6 +82,7 @@ export async function buscarQuestao(id) {
       ? data.avaliacoes.reduce((s, a) => s + a.nota, 0) / data.avaliacoes.length
       : null,
     comentarios: data.comentarios?.filter(c => !c.arquivado_em) ?? [],
+    validacao,
   }
 }
 

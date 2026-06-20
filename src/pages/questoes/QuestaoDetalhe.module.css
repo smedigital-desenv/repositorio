@@ -53,6 +53,14 @@
 
 .titulo { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; line-height: 1.4; }
 .meta { display: flex; gap: 6px; font-size: 12px; color: var(--text-tertiary); flex-wrap: wrap; }
+.meta strong { color: var(--text-secondary); font-weight: 600; }
+
+.autoria { margin-top: 8px; }
+.autoriaItem { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); }
+.autoriaItem strong { color: var(--text-secondary); font-weight: 600; }
+.autoriaOk { color: var(--color-success); flex-shrink: 0; }
+.autoriaPend { color: var(--text-tertiary); flex-shrink: 0; }
+.autoriaPendTxt { font-style: italic; }
 
 .secTitulo { font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
 
