@@ -6,12 +6,15 @@ import Questoes from './pages/questoes/Questoes'
 import QuestaoForm from './pages/questoes/QuestaoForm'
 import QuestaoDetalhe from './pages/questoes/QuestaoDetalhe'
 import Planos from './pages/planos/Planos'
+import PlanoForm from './pages/planos/PlanoForm'
+import PlanoDetalhe from './pages/planos/PlanoDetalhe'
 import Materiais from './pages/materiais/Materiais'
 import Provas from './pages/provas/Provas'
 import ProvaForm from './pages/provas/ProvaForm'
 import ProvaDetalhe from './pages/provas/ProvaDetalhe'
 import Matriz from './pages/matriz/Matriz'
 import Colecoes from './pages/colecoes/Colecoes'
+import ColecaoDetalhe from './pages/colecoes/ColecaoDetalhe'
 import Favoritos from './pages/favoritos/Favoritos'
 import Relatorios from './pages/relatorios/Relatorios'
 import Cobertura from './pages/cobertura/Cobertura'
@@ -33,6 +36,9 @@ const router = createBrowserRouter([
       { path: 'questoes/:id',          element: <QuestaoDetalhe /> },
       { path: 'questoes/:id/editar',   element: <QuestaoForm /> },
       { path: 'planos',                element: <Planos /> },
+      { path: 'planos/novo',          element: <PlanoForm /> },
+      { path: 'planos/:id',           element: <PlanoDetalhe /> },
+      { path: 'planos/:id/editar',    element: <PlanoForm /> },
       { path: 'materiais',             element: <Materiais /> },
       { path: 'provas',                element: <Provas /> },
       { path: 'provas/nova',           element: <ProvaForm /> },
@@ -40,6 +46,7 @@ const router = createBrowserRouter([
       { path: 'provas/:id/editar',     element: <ProvaForm /> },
       { path: 'matriz',                element: <Matriz /> },
       { path: 'colecoes',              element: <Colecoes /> },
+      { path: 'colecoes/:id',          element: <ColecaoDetalhe /> },
       { path: 'favoritos',             element: <Favoritos /> },
       { path: 'relatorios',            element: <Relatorios /> },
       { path: 'cobertura',             element: <Cobertura /> },

@@ -217,6 +217,45 @@ export async function listarFavoritos() {
   return data ?? []
 }
 
+// Questões favoritadas do usuário, já com os detalhes para exibição
+export async function listarQuestoesFavoritas() {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('favoritos')
+    .select(`
+      id,
+      criado_em,
+      questoes(
+        *,
+        disciplinas(nome, cor),
+        perfis(nome),
+        questao_alternativas(id, letra, texto, correta, ordem),
+        questao_gabaritos(texto, criterios),
+        questao_habilidades(habilidades(id, codigo, descricao)),
+        avaliacoes(nota)
+      )
+    `)
+    .eq('usuario_id', user.id)
+    .not('questao_id', 'is', null)
+    .order('criado_em', { ascending: false })
+
+  if (error) throw error
+
+  return (data || [])
+    .filter(f => f.questoes)
+    .map(f => ({
+      ...f.questoes,
+      favorito_id: f.id,
+      alternativas: f.questoes.questao_alternativas?.sort((a, b) => a.ordem - b.ordem) ?? [],
+      gabarito: f.questoes.questao_gabaritos?.[0] ?? null,
+      habilidades: f.questoes.questao_habilidades?.map(qh => qh.habilidades) ?? [],
+      media_avaliacao: f.questoes.avaliacoes?.length
+        ? f.questoes.avaliacoes.reduce((s, a) => s + a.nota, 0) / f.questoes.avaliacoes.length
+        : null,
+      total_avaliacoes: f.questoes.avaliacoes?.length ?? 0,
+    }))
+}
+
 // ── Dados auxiliares ──────────────────────────────────────────
 
 export async function listarDisciplinas() {

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { listarQuestoes, listarDisciplinas, adicionarQuestaoProva } from '../../services/questoes'
 import { listarProvas } from '../../services/provas'
+import { listarColecoes, adicionarQuestaoColecao } from '../../services/colecoes'
 import { useAuth } from '../../contexts/AuthContext'
 import { Plus, Search, Eye, Pencil, Trash2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -23,6 +24,8 @@ export default function Questoes() {
   const [expandidas, setExpandidas] = useState(new Set())
   const [questaoParaProva, setQuestaoParaProva] = useState(null)
   const [provaSelected, setProvaSelected] = useState(null)
+  const [questaoParaColecao, setQuestaoParaColecao] = useState(null)
+  const [colecaoSelected, setColecaoSelected] = useState(null)
 
   // Professor vê: suas próprias questões + questões publicadas de outros
   // Formador/Admin: veem tudo
@@ -72,6 +75,27 @@ export default function Questoes() {
       setQuestaoParaProva(null)
       setProvaSelected(null)
       toast.success('Questão adicionada à prova!')
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  // Modal de adicionar à coleção: coleções do próprio usuário
+  const { data: colecoes = [] } = useQuery({
+    queryKey: ['colecoes', 'minhas', usuario?.id],
+    queryFn: () => listarColecoes({ autor_id: usuario?.id }),
+    enabled: !!usuario,
+  })
+
+  const addColecao = useMutation({
+    mutationFn: async () => {
+      if (!colecaoSelected) throw new Error('Selecione uma coleção')
+      await adicionarQuestaoColecao(colecaoSelected, questaoParaColecao.id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['colecoes'] })
+      setQuestaoParaColecao(null)
+      setColecaoSelected(null)
+      toast.success('Questão adicionada à coleção!')
     },
     onError: (err) => toast.error(err.message),
   })
@@ -275,12 +299,16 @@ export default function Questoes() {
                       </div>
                     )}
 
-                    {true && (
+                    <div className={styles.btnAddRow}>
                       <button className={styles.btnAddProva}
                         onClick={() => setQuestaoParaProva(q)}>
                         + Adicionar a uma prova
                       </button>
-                    )}
+                      <button className={styles.btnAddColecao}
+                        onClick={() => setQuestaoParaColecao(q)}>
+                        + Adicionar a uma coleção
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -316,6 +344,39 @@ export default function Questoes() {
                 onClick={() => addProva.mutate()}
                 disabled={addProva.isPending || !provaSelected}>
                 {addProva.isPending ? 'Adicionando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para selecionar coleção */}
+      {questaoParaColecao && (
+        <div className={styles.modalOverlay} onClick={() => setQuestaoParaColecao(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitulo}>Selecione uma coleção</h3>
+            <p className={styles.modalSubtitulo}>Em qual coleção você quer adicionar esta questão?</p>
+            <div className={styles.provasList}>
+              {colecoes.length === 0 ? (
+                <p className={styles.vazioModal}>Nenhuma coleção criada. <a href="/colecoes">Criar coleção</a></p>
+              ) : (
+                colecoes.map(c => (
+                  <button key={c.id} className={`${styles.provaItem} ${colecaoSelected === c.id ? styles.provaItemSelecionada : ''}`}
+                    onClick={() => setColecaoSelected(c.id)}>
+                    <span>{c.nome}</span>
+                    <span className={styles.provaSubtitle}>{c.total_questoes} questões{c.publica ? ' • pública' : ''}</span>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className={styles.modalBotoes}>
+              <button className={styles.btnCancel} onClick={() => setQuestaoParaColecao(null)}>
+                Cancelar
+              </button>
+              <button className={styles.btnConfirm}
+                onClick={() => addColecao.mutate()}
+                disabled={addColecao.isPending || !colecaoSelected}>
+                {addColecao.isPending ? 'Adicionando...' : 'Confirmar'}
               </button>
             </div>
           </div>
