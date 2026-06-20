@@ -299,6 +299,20 @@ export default function Questoes() {
                       </div>
                     )}
 
+                    <div className={styles.autoriaRow}>
+                      <span className={styles.autoriaItem}>
+                        Criada por <strong>{q.perfis?.nome ?? '—'}</strong>
+                      </span>
+                      <span className={styles.autoriaSep}>·</span>
+                      <span className={styles.autoriaItem}>
+                        {q.validacao ? (
+                          <><CheckCircle size={13} className={styles.autoriaOk} /> Validada por <strong>{q.validacao.nome ?? '—'}</strong> em {new Date(q.validacao.em).toLocaleDateString('pt-BR')}</>
+                        ) : (
+                          <span className={styles.autoriaPend}>Ainda não validada</span>
+                        )}
+                      </span>
+                    </div>
+
                     <div className={styles.btnAddRow}>
                       <button className={styles.btnAddProva}
                         onClick={() => setQuestaoParaProva(q)}>

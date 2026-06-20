@@ -135,6 +135,18 @@
 }
 .gabarito p { margin: 0; }
 
+.autoriaRow {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--text-tertiary);
+  padding: 8px 0; margin-bottom: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.autoriaItem { display: inline-flex; align-items: center; gap: 5px; }
+.autoriaItem strong { color: var(--text-secondary); font-weight: 600; }
+.autoriaSep { color: var(--border-default); }
+.autoriaOk { color: var(--color-success); flex-shrink: 0; }
+.autoriaPend { font-style: italic; }
+
 .btnAddProva {
   width: 100%; padding: 8px 12px;
   font-size: 12px; font-weight: 500; font-family: var(--font-sans);

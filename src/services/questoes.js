@@ -14,7 +14,8 @@ export async function listarQuestoes(filtros = {}) {
       ),
       avaliacoes(nota),
       questao_alternativas(id, letra, texto, correta, ordem),
-      questao_gabaritos(texto, criterios)
+      questao_gabaritos(texto, criterios),
+      aprovacoes(status_novo, criado_em, perfis(nome))
     `)
     .is('arquivado_em', null)
     .order('criado_em', { ascending: false })
@@ -43,7 +44,16 @@ export async function listarQuestoes(filtros = {}) {
     habilidades: q.questao_habilidades?.map(qh => qh.habilidades) ?? [],
     alternativas: q.questao_alternativas?.sort((a,b) => a.ordem - b.ordem) ?? [],
     gabarito: q.questao_gabaritos?.[0] ?? null,
+    validacao: validacaoDeAprovacoes(q.aprovacoes),
   }))
+}
+
+// Extrai quem validou (publicou) a questão a partir do histórico de aprovações
+function validacaoDeAprovacoes(aprovacoes) {
+  const pub = (aprovacoes ?? [])
+    .filter(a => a.status_novo === 'publicado')
+    .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))[0]
+  return pub ? { nome: pub.perfis?.nome ?? null, em: pub.criado_em } : null
 }
 
 export async function buscarQuestao(id) {
@@ -65,14 +75,6 @@ export async function buscarQuestao(id) {
 
   if (error) throw error
 
-  // Quem validou = autor da última aprovação que publicou a questão
-  const publicacoes = (data.aprovacoes ?? [])
-    .filter(a => a.status_novo === 'publicado')
-    .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
-  const validacao = publicacoes[0]
-    ? { nome: publicacoes[0].perfis?.nome ?? null, em: publicacoes[0].criado_em }
-    : null
-
   return {
     ...data,
     alternativas: data.questao_alternativas?.sort((a, b) => a.ordem - b.ordem) ?? [],
@@ -82,7 +84,7 @@ export async function buscarQuestao(id) {
       ? data.avaliacoes.reduce((s, a) => s + a.nota, 0) / data.avaliacoes.length
       : null,
     comentarios: data.comentarios?.filter(c => !c.arquivado_em) ?? [],
-    validacao,
+    validacao: validacaoDeAprovacoes(data.aprovacoes),
   }
 }
 
