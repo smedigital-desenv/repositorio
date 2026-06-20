@@ -20,12 +20,6 @@ async function fetchImagem(url) {
   }
 }
 
-// Converte px para EMUs (English Metric Units — unidade do docx)
-// 1 polegada = 914400 EMUs = 96px
-function pxParaEmu(px) {
-  return Math.round((px / 96) * 914400)
-}
-
 // Processa um nó HTML e retorna array de { tipo: 'texto'|'imagem', ... }
 async function processarNo(no) {
   const itens = []
@@ -104,8 +98,9 @@ function itensParagrafos(itens, opts = {}) {
             data: item.data,
             type: item.type,
             transformation: {
-              width: pxParaEmu(item.w),
-              height: pxParaEmu(item.h),
+              // docx espera as dimensões em PIXELS (converte para EMU internamente).
+              width: item.w,
+              height: item.h,
             },
           })
         }
