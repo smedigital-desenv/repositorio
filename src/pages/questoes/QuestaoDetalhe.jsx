@@ -30,6 +30,8 @@ export default function QuestaoDetalhe() {
   const [modalProva, setModalProva] = useState(false)
   const [provaSelecionada, setProvaSelecionada] = useState(null)
   const [novoComentario, setNovoComentario] = useState('')
+  const [respondendo, setRespondendo] = useState(null)   // id do comentário sendo respondido
+  const [respostaTexto, setRespostaTexto] = useState('')
 
   const { data: questao, isLoading } = useQuery({
     queryKey: ['questao', id],
@@ -124,10 +126,36 @@ export default function QuestaoDetalhe() {
     onError: (err) => toast.error('Erro: ' + err.message),
   })
 
+  const responder = useMutation({
+    mutationFn: () => adicionarComentario({ questao_id: id, pai_id: respondendo, texto: respostaTexto }),
+    onSuccess: () => {
+      setRespondendo(null)
+      setRespostaTexto('')
+      queryClient.invalidateQueries(['questao', id])
+      toast.success('Resposta publicada!')
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
   if (isLoading) return <div className={styles.loading}>Carregando questão...</div>
   if (!questao) return <div className={styles.loading}>Questão não encontrada.</div>
 
   const StatusIcon = STATUS_CONFIG[questao.status]?.icon ?? Clock
+
+  // Monta a árvore de comentários: nível de topo + respostas agrupadas por pai
+  const todosComentarios = questao.comentarios ?? []
+  const comentariosTopo = todosComentarios
+    .filter(c => !c.pai_id)
+    .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
+  const respostasPorPai = {}
+  todosComentarios
+    .filter(c => c.pai_id)
+    .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
+    .forEach(c => { (respostasPorPai[c.pai_id] ||= []).push(c) })
+
+  function podeRemoverComentario(c) {
+    return c.autor_id === usuario?.id || isFormador || isAdmin
+  }
 
   return (
     <div className={styles.page}>
@@ -260,34 +288,79 @@ export default function QuestaoDetalhe() {
               </button>
             </div>
 
-            {questao.comentarios?.length > 0 ? (
+            {comentariosTopo.length > 0 ? (
               <div className={styles.comentLista}>
-                {[...questao.comentarios]
-                  .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
-                  .map(c => {
-                    const podeRemover = c.autor_id === usuario?.id || isFormador || isAdmin
-                    return (
-                      <div key={c.id} className={styles.comentItem}>
-                        <div className={styles.comentTopo}>
-                          <span className={styles.comentAutor}>{c.perfis?.nome ?? 'Professor'}</span>
-                          <span className={styles.comentData}>
-                            {new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </span>
-                          {podeRemover && (
-                            <button
-                              className={styles.comentRemover}
-                              onClick={() => removerComentario.mutate(c.id)}
-                              disabled={removerComentario.isPending}
-                              title="Remover comentário"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                        <p className={styles.comentTexto}>{c.texto}</p>
+                {comentariosTopo.map(c => (
+                  <div key={c.id} className={styles.comentItem}>
+                    <div className={styles.comentTopo}>
+                      <span className={styles.comentAutor}>{c.perfis?.nome ?? 'Professor'}</span>
+                      <span className={styles.comentData}>
+                        {new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                      {podeRemoverComentario(c) && (
+                        <button className={styles.comentRemover}
+                          onClick={() => removerComentario.mutate(c.id)}
+                          disabled={removerComentario.isPending}
+                          title="Remover comentário">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                    <p className={styles.comentTexto}>{c.texto}</p>
+
+                    {/* Respostas */}
+                    {respostasPorPai[c.id]?.length > 0 && (
+                      <div className={styles.respostaLista}>
+                        {respostasPorPai[c.id].map(r => (
+                          <div key={r.id} className={styles.respostaItem}>
+                            <div className={styles.comentTopo}>
+                              <span className={styles.comentAutor}>{r.perfis?.nome ?? 'Professor'}</span>
+                              <span className={styles.comentData}>
+                                {new Date(r.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </span>
+                              {podeRemoverComentario(r) && (
+                                <button className={styles.comentRemover}
+                                  onClick={() => removerComentario.mutate(r.id)}
+                                  disabled={removerComentario.isPending}
+                                  title="Remover resposta">
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                            <p className={styles.comentTexto}>{r.texto}</p>
+                          </div>
+                        ))}
                       </div>
-                    )
-                  })}
+                    )}
+
+                    {/* Form de resposta */}
+                    {respondendo === c.id ? (
+                      <div className={styles.respostaForm}>
+                        <textarea className={styles.comentInput} rows={2}
+                          placeholder={`Respondendo a ${c.perfis?.nome ?? 'professor'}...`}
+                          value={respostaTexto}
+                          onChange={e => setRespostaTexto(e.target.value)}
+                          autoFocus />
+                        <div className={styles.respostaAcoes}>
+                          <button className={styles.comentCancelar}
+                            onClick={() => { setRespondendo(null); setRespostaTexto('') }}>
+                            Cancelar
+                          </button>
+                          <button className={styles.comentEnviar}
+                            onClick={() => responder.mutate()}
+                            disabled={responder.isPending || !respostaTexto.trim()}>
+                            <Send size={13} /> {responder.isPending ? 'Enviando...' : 'Responder'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className={styles.btnResponder}
+                        onClick={() => { setRespondendo(c.id); setRespostaTexto('') }}>
+                        Responder
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
               <p className={styles.comentVazio}>Nenhum comentário ainda. Seja o primeiro a comentar.</p>

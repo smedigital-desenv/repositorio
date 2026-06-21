@@ -116,6 +116,29 @@
 .comentTexto { font-size: 13px; color: var(--text-primary); line-height: 1.55; margin: 0; white-space: pre-wrap; }
 .comentVazio { font-size: 12px; color: var(--text-tertiary); margin: 0; }
 
+/* Respostas (threads) */
+.respostaLista {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 10px; padding-left: 12px;
+  border-left: 2px solid var(--border-default);
+}
+.respostaItem { padding: 8px 10px; background: var(--bg-surface); border-radius: var(--radius-md); }
+
+.btnResponder {
+  margin-top: 8px; padding: 2px 0; font-size: 12px; font-weight: 500; font-family: var(--font-sans);
+  background: none; border: none; color: var(--color-primary); cursor: pointer;
+}
+.btnResponder:hover { text-decoration: underline; }
+
+.respostaForm { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.respostaAcoes { display: flex; justify-content: flex-end; gap: 8px; }
+.comentCancelar {
+  padding: 7px 14px; font-size: 13px; font-family: var(--font-sans);
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer;
+}
+.comentCancelar:hover { background: var(--bg-subtle); }
+
 /* Aprovação */
 .aprovacaoAcoes { display: flex; flex-direction: column; gap: 8px; }
 .btnAprovar {
