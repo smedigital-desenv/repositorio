@@ -67,7 +67,7 @@ export async function buscarQuestao(id) {
       questao_gabaritos(id, texto, criterios),
       questao_habilidades(habilidades(id, codigo, descricao, ano_escolar)),
       avaliacoes(nota, autor_id),
-      comentarios(id, texto, criado_em, arquivado_em, perfis(nome)),
+      comentarios(id, texto, criado_em, arquivado_em, autor_id, perfis(nome)),
       aprovacoes(status_novo, justificativa, criado_em, perfis(nome))
     `)
     .eq('id', id)

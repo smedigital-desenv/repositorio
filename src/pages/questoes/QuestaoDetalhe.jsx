@@ -3,8 +3,9 @@ import { listarProvas } from '../../services/provas'
 import { adicionarQuestaoProva } from '../../services/questoes'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buscarQuestao, mudarStatus, avaliarQuestao, toggleFavorito, listarFavoritos, registrarVisualizacao } from '../../services/questoes'
+import { adicionarComentario, arquivarComentario } from '../../services/comentarios'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Pencil, Star, Heart, CheckCircle, XCircle, Clock, Archive } from 'lucide-react'
+import { ChevronLeft, Pencil, Star, Heart, CheckCircle, XCircle, Clock, Archive, MessageSquare, Send, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import styles from './QuestaoDetalhe.module.css'
@@ -28,6 +29,7 @@ export default function QuestaoDetalhe() {
   const [favoritoId, setFavoritoId] = useState(null)
   const [modalProva, setModalProva] = useState(false)
   const [provaSelecionada, setProvaSelecionada] = useState(null)
+  const [novoComentario, setNovoComentario] = useState('')
 
   const { data: questao, isLoading } = useQuery({
     queryKey: ['questao', id],
@@ -101,6 +103,25 @@ export default function QuestaoDetalhe() {
       queryClient.invalidateQueries(['favoritos'])
       toast.success(novoId ? 'Adicionado aos favoritos' : 'Removido dos favoritos')
     },
+  })
+
+  const comentar = useMutation({
+    mutationFn: () => adicionarComentario({ questao_id: id, texto: novoComentario }),
+    onSuccess: () => {
+      setNovoComentario('')
+      queryClient.invalidateQueries(['questao', id])
+      toast.success('Comentário publicado!')
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  const removerComentario = useMutation({
+    mutationFn: (comentarioId) => arquivarComentario(comentarioId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['questao', id])
+      toast.success('Comentário removido.')
+    },
+    onError: (err) => toast.error('Erro: ' + err.message),
   })
 
   if (isLoading) return <div className={styles.loading}>Carregando questão...</div>
@@ -213,6 +234,65 @@ export default function QuestaoDetalhe() {
               <p className={styles.comentarioPed}>{questao.comentario_pedagogico}</p>
             </div>
           )}
+
+          {/* Comentários dos professores */}
+          <div className={styles.card}>
+            <p className={styles.secTitulo}>
+              <MessageSquare size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              Comentários {questao.comentarios?.length > 0 && `(${questao.comentarios.length})`}
+            </p>
+
+            <div className={styles.comentForm}>
+              <textarea
+                className={styles.comentInput}
+                rows={2}
+                placeholder="Deixe um comentário para o autor e os colegas..."
+                value={novoComentario}
+                onChange={e => setNovoComentario(e.target.value)}
+              />
+              <button
+                className={styles.comentEnviar}
+                onClick={() => comentar.mutate()}
+                disabled={comentar.isPending || !novoComentario.trim()}
+                title="Publicar comentário"
+              >
+                <Send size={14} /> {comentar.isPending ? 'Enviando...' : 'Comentar'}
+              </button>
+            </div>
+
+            {questao.comentarios?.length > 0 ? (
+              <div className={styles.comentLista}>
+                {[...questao.comentarios]
+                  .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
+                  .map(c => {
+                    const podeRemover = c.autor_id === usuario?.id || isFormador || isAdmin
+                    return (
+                      <div key={c.id} className={styles.comentItem}>
+                        <div className={styles.comentTopo}>
+                          <span className={styles.comentAutor}>{c.perfis?.nome ?? 'Professor'}</span>
+                          <span className={styles.comentData}>
+                            {new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                          {podeRemover && (
+                            <button
+                              className={styles.comentRemover}
+                              onClick={() => removerComentario.mutate(c.id)}
+                              disabled={removerComentario.isPending}
+                              title="Remover comentário"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                        <p className={styles.comentTexto}>{c.texto}</p>
+                      </div>
+                    )
+                  })}
+              </div>
+            ) : (
+              <p className={styles.comentVazio}>Nenhum comentário ainda. Seja o primeiro a comentar.</p>
+            )}
+          </div>
         </div>
 
         {/* Lateral */}
