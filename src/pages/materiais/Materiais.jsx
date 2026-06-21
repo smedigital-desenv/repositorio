@@ -13,15 +13,31 @@ import styles from './Materiais.module.css'
 
 const ANOS = ['1º ano','2º ano','3º ano','4º ano','5º ano','6º ano','7º ano','8º ano','9º ano']
 
-const TIPOS = [
+// Formato de entrega (como o material é acessado) — coluna `formato`
+const FORMATOS = [
   { valor: 'arquivo',   label: 'Arquivo',   icone: FileText },
   { valor: 'link',      label: 'Link',      icone: Link2 },
   { valor: 'video',     label: 'Vídeo',     icone: Video },
 ]
 
-function iconePorTipo(tipo) {
-  const t = TIPOS.find(x => x.valor === tipo)
-  return t ? t.icone : File
+// Classificação pedagógica — coluna `tipo`
+const TIPOS_PEDAGOGICOS = [
+  { valor: 'sequencia_didatica',   label: 'Sequência didática' },
+  { valor: 'apresentacao',         label: 'Apresentação' },
+  { valor: 'guia_pedagogico',      label: 'Guia pedagógico' },
+  { valor: 'video',                label: 'Vídeo' },
+  { valor: 'material_apoio',       label: 'Material de apoio' },
+  { valor: 'arquivo_complementar', label: 'Arquivo complementar' },
+  { valor: 'outro',                label: 'Outro' },
+]
+
+function iconePorFormato(formato) {
+  const f = FORMATOS.find(x => x.valor === formato)
+  return f ? f.icone : File
+}
+
+function labelTipo(tipo) {
+  return TIPOS_PEDAGOGICOS.find(x => x.valor === tipo)?.label ?? null
 }
 
 // Extrai o caminho dentro do bucket "midia" a partir da URL pública
@@ -39,7 +55,7 @@ export default function Materiais() {
   const [aba, setAba] = useState('rede')
   const [buscaTexto, setBuscaTexto] = useState('')
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
-  const [filtros, setFiltros] = useState({ tipo: '', disciplina_id: '', ano_escolar: '' })
+  const [filtros, setFiltros] = useState({ formato: '', tipo: '', disciplina_id: '', ano_escolar: '' })
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -62,7 +78,7 @@ export default function Materiais() {
 
   const excluir = useMutation({
     mutationFn: async (material) => {
-      if (material.tipo === 'arquivo') {
+      if (material.formato === 'arquivo') {
         const path = caminhoDaUrl(material.url)
         if (path) { try { await deletarArquivo(path) } catch { /* arquivo já removido */ } }
       }
@@ -81,7 +97,7 @@ export default function Materiais() {
 
   const lista = aba === 'meus' ? meus : rede
   const isLoading = aba === 'meus' ? loadingMeus : loadingRede
-  const temFiltro = filtros.tipo || filtros.disciplina_id || filtros.ano_escolar
+  const temFiltro = filtros.formato || filtros.tipo || filtros.disciplina_id || filtros.ano_escolar
 
   const filtrado = lista.filter(m => {
     const t = buscaTexto.toLowerCase()
@@ -90,7 +106,7 @@ export default function Materiais() {
   })
 
   function setFiltro(campo, valor) { setFiltros(prev => ({ ...prev, [campo]: valor })) }
-  function limparFiltros() { setFiltros({ tipo: '', disciplina_id: '', ano_escolar: '' }); setBuscaTexto('') }
+  function limparFiltros() { setFiltros({ formato: '', tipo: '', disciplina_id: '', ano_escolar: '' }); setBuscaTexto('') }
 
   return (
     <div className={styles.page}>
@@ -126,9 +142,13 @@ export default function Materiais() {
 
       {mostrarFiltros && (
         <div className={styles.filtrosPanel}>
+          <select className={styles.filtroSelect} value={filtros.formato} onChange={e => setFiltro('formato', e.target.value)}>
+            <option value="">Todos os formatos</option>
+            {FORMATOS.map(f => <option key={f.valor} value={f.valor}>{f.label}</option>)}
+          </select>
           <select className={styles.filtroSelect} value={filtros.tipo} onChange={e => setFiltro('tipo', e.target.value)}>
             <option value="">Todos os tipos</option>
-            {TIPOS.map(t => <option key={t.valor} value={t.valor}>{t.label}</option>)}
+            {TIPOS_PEDAGOGICOS.map(t => <option key={t.valor} value={t.valor}>{t.label}</option>)}
           </select>
           <select className={styles.filtroSelect} value={filtros.disciplina_id} onChange={e => setFiltro('disciplina_id', e.target.value)}>
             <option value="">Todas as disciplinas</option>
@@ -166,13 +186,14 @@ export default function Materiais() {
       ) : (
         <div className={styles.grid}>
           {filtrado.map(m => {
-            const Icone = iconePorTipo(m.tipo)
+            const Icone = iconePorFormato(m.formato)
             const ehDono = m.autor_id === usuario?.id
             return (
               <div key={m.id} className={styles.card}>
                 <div className={styles.cardIcone}><Icone size={20} /></div>
                 <div className={styles.cardBody}>
                   <div className={styles.cardMeta}>
+                    {labelTipo(m.tipo) && <span className={styles.tipoBadge}>{labelTipo(m.tipo)}</span>}
                     {m.disciplinas && (
                       <span className={styles.discBadge} style={{ background: m.disciplinas.cor + '22', color: m.disciplinas.cor }}>
                         {m.disciplinas.nome}
@@ -189,7 +210,7 @@ export default function Materiais() {
                   )}
                   <div className={styles.cardFooter}>
                     <a className={styles.btnAbrir} href={m.url} target="_blank" rel="noopener noreferrer">
-                      {m.tipo === 'arquivo' ? <><Download size={13} /> Baixar</> : <><ExternalLink size={13} /> Abrir</>}
+                      {m.formato === 'arquivo' ? <><Download size={13} /> Baixar</> : <><ExternalLink size={13} /> Abrir</>}
                     </a>
                     <div className={styles.cardAcoes}>
                       {(podeEditar || ehDono) && (
@@ -242,14 +263,15 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
   const [form, setForm] = useState({
     titulo: material?.titulo ?? '',
     descricao: material?.descricao ?? '',
-    tipo: material?.tipo ?? 'arquivo',
+    formato: material?.formato ?? 'arquivo',
+    tipo: material?.tipo ?? 'outro',
     url: material?.url ?? '',
     disciplina_id: material?.disciplina_id ?? '',
     ano_escolar: material?.ano_escolar ?? '',
     tags: material?.tags?.join(', ') ?? '',
   })
   const [arquivo, setArquivo] = useState(null)
-  const [arquivoNome, setArquivoNome] = useState(material?.tipo === 'arquivo' && material?.url ? 'Arquivo atual mantido' : '')
+  const [arquivoNome, setArquivoNome] = useState(material?.formato === 'arquivo' && material?.url ? 'Arquivo atual mantido' : '')
 
   function set(campo, valor) { setForm(prev => ({ ...prev, [campo]: valor })) }
 
@@ -258,7 +280,7 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
       if (!form.titulo.trim()) throw new Error('Título é obrigatório')
 
       let url = form.url.trim()
-      if (form.tipo === 'arquivo') {
+      if (form.formato === 'arquivo') {
         if (arquivo) {
           const res = await uploadArquivo(arquivo, 'materiais')
           url = res.url
@@ -274,6 +296,7 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
       const dados = {
         titulo: form.titulo.trim(),
         descricao: form.descricao.trim() || null,
+        formato: form.formato,
         tipo: form.tipo,
         url,
         disciplina_id: form.disciplina_id || null,
@@ -303,20 +326,23 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
         </div>
 
         <div className={styles.modalBody}>
-          <div className={styles.tipoSelector}>
-            {TIPOS.map(t => {
-              const Icone = t.icone
-              return (
-                <button
-                  key={t.valor}
-                  className={`${styles.tipoBtn} ${form.tipo === t.valor ? styles.tipoBtnAtivo : ''}`}
-                  onClick={() => set('tipo', t.valor)}
-                  type="button"
-                >
-                  <Icone size={16} /> {t.label}
-                </button>
-              )
-            })}
+          <div className={styles.campo}>
+            <label className={styles.label}>Formato</label>
+            <div className={styles.tipoSelector}>
+              {FORMATOS.map(f => {
+                const Icone = f.icone
+                return (
+                  <button
+                    key={f.valor}
+                    className={`${styles.tipoBtn} ${form.formato === f.valor ? styles.tipoBtnAtivo : ''}`}
+                    onClick={() => set('formato', f.valor)}
+                    type="button"
+                  >
+                    <Icone size={16} /> {f.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div className={styles.campo}>
@@ -329,7 +355,7 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
             <textarea className={styles.textarea} rows={2} value={form.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Para que serve este material" />
           </div>
 
-          {form.tipo === 'arquivo' ? (
+          {form.formato === 'arquivo' ? (
             <div className={styles.campo}>
               <label className={styles.label}>Arquivo {!isEdicao && <span className={styles.req}>*</span>}</label>
               <label className={styles.uploadBox}>
@@ -341,9 +367,16 @@ function MaterialModal({ material, disciplinas, onClose, onSaved }) {
           ) : (
             <div className={styles.campo}>
               <label className={styles.label}>URL <span className={styles.req}>*</span></label>
-              <input className={styles.input} value={form.url} onChange={e => set('url', e.target.value)} placeholder={form.tipo === 'video' ? 'https://youtube.com/...' : 'https://...'} />
+              <input className={styles.input} value={form.url} onChange={e => set('url', e.target.value)} placeholder={form.formato === 'video' ? 'https://youtube.com/...' : 'https://...'} />
             </div>
           )}
+
+          <div className={styles.campo}>
+            <label className={styles.label}>Tipo pedagógico</label>
+            <select className={styles.select} value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+              {TIPOS_PEDAGOGICOS.map(t => <option key={t.valor} value={t.valor}>{t.label}</option>)}
+            </select>
+          </div>
 
           <div className={styles.linha2}>
             <div className={styles.campo}>

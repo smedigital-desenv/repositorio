@@ -103,6 +103,7 @@
 .cardMeta { display: flex; gap: 4px; flex-wrap: wrap; }
 .badge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-secondary); }
 .discBadge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); font-weight: 500; }
+.tipoBadge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full); font-weight: 500; background: var(--color-primary-light); color: var(--color-primary-dark); }
 
 .cardTitulo { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; line-height: 1.4; }
 .cardDesc {
