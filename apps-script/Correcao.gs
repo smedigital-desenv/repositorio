@@ -97,7 +97,7 @@ function prepararPlanilha() {
       ['pasta_drive_id', '', 'ID da pasta do Drive com as folhas escaneadas (o trecho da URL depois de /folders/)'],
       ['codigo_folha',   '', 'Código impresso na folha, ex.: FR-A1B2C3. Folha com outro código é sinalizada'],
       ['alternativas',   5,  'Quantas alternativas por questão (4, 5 ou 6)'],
-      ['modelo',         'gemini-2.5-flash', 'Modelo do Gemini. flash é mais barato e rápido; pro acerta mais em folha ruim'],
+      ['modelo',         'gemini-2.5-pro', 'Modelo do Gemini. pro é o confiável para grade de respostas; flash é mais barato mas erra folha densa'],
       ['nota_maxima',    10, 'Escala da nota'],
       ['turma_padrao',   '', 'Usado quando a IA não consegue ler o campo TURMA da folha (opcional)'],
     ])
@@ -180,7 +180,7 @@ function obterConfig() {
     codigoFolha: String(cfg.codigo_folha || '').trim(),
     nAlternativas: nAlt,
     letras: 'ABCDEF'.slice(0, nAlt).split(''),
-    modelo: String(cfg.modelo || 'gemini-2.5-flash').trim(),
+    modelo: String(cfg.modelo || 'gemini-2.5-pro').trim(),
     notaMaxima: Number(cfg.nota_maxima) || 10,
     turmaPadrao: String(cfg.turma_padrao || '').trim(),
   }
@@ -331,14 +331,26 @@ function construirPrompt(cfg, questoes) {
     '',
     'Cada quadrado tem a letra (ou o dígito) impressa em cinza claro no centro.',
     'Essa letra impressa NÃO é marca do aluno: serve para você identificar a',
-    'coluna. Marca do aluno é traço escuro de caneta cobrindo o quadrado.',
+    'coluna. Marca do aluno é rabisco escuro de caneta cobrindo o quadrado —',
+    'em geral cobre a letra parcial ou totalmente.',
+    '',
+    'ATENÇÃO: a folha contém textos impressos de instrução, entre eles um',
+    'EXEMPLO que cita "Chamada 7" e um quadrado pintado de exemplo na área',
+    '"COMO PREENCHER". Nada disso é resposta do aluno. Nunca copie número ou',
+    'letra de texto impresso: só de marca de caneta dentro das grades.',
     '',
     'Questões impressas nesta folha: ' + questoes.join(', ') + '.',
     '',
     '## Regras de leitura',
     '',
-    '- Use o número impresso na primeira coluna de cada linha. Nunca deduza o',
-    '  número da questão pela posição na tabela.',
+    'Trabalhe bloco por bloco, linha por linha, sem pular nem resumir:',
+    '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
+    '   o número da questão pela posição na tabela.',
+    '2. Olhe cada um dos quadrados daquela linha, um a um, e diga qual tem',
+    '   rabisco de caneta. Só então registre a letra da coluna.',
+    '3. Não use padrão, sequência ou "impressão geral": cada linha é uma',
+    '   observação independente da imagem.',
+    '',
     '- Devolva exatamente ' + questoes.length + ' itens em "respostas", um para cada número',
     '  da lista acima, em ordem crescente.',
     '- Marcada = o quadrado claramente mais escuro que os outros da mesma linha.',
@@ -350,10 +362,12 @@ function construirPrompt(cfg, questoes) {
     '## Número de chamada',
     '',
     'Leia as duas fontes de forma independente e sem tentar conciliá-las:',
-    '- chamada_escrita: os dois dígitos manuscritos nas caixas.',
+    '- chamada_escrita: os dois dígitos manuscritos DENTRO das caixas "Escreva".',
+    '  Caixas em branco, sem dígito manuscrito, são "?" — não deduza o valor da',
+    '  grade ao lado nem de nenhum texto impresso.',
     '- chamada_marcada: os dígitos pintados nas linhas D e U da grade.',
-    'Se uma delas estiver ilegível, devolva "?" naquele campo. Quem decide o',
-    'que fazer com a divergência não é você.',
+    'Se uma fonte estiver ilegível ou em branco, devolva "?" naquele campo.',
+    'Quem decide o que fazer com a divergência não é você.',
     '',
     '## Arquivo com várias folhas',
     '',
@@ -363,6 +377,9 @@ function construirPrompt(cfg, questoes) {
     '',
     'Copie em codigo_folha o código impresso no alto da folha (formato FR-XXXXXX)',
     'e em turma o que estiver escrito no campo TURMA, ou "" se estiver em branco.',
+    'Em total_questoes_impressas, conte quantas linhas de questão a folha',
+    'realmente tem (o rodapé dela diz "N QUESTOES") — mesmo que seja diferente',
+    'da lista acima.',
   ].join('\n')
 }
 
@@ -378,6 +395,7 @@ function esquemaResposta() {
             pagina_no_arquivo: { type: 'INTEGER' },
             codigo_folha:      { type: 'STRING' },
             turma:             { type: 'STRING' },
+            total_questoes_impressas: { type: 'INTEGER' },
             chamada_escrita:   { type: 'STRING' },
             chamada_marcada:   { type: 'STRING' },
             respostas: {
@@ -633,6 +651,14 @@ function normalizarLeitura(folha, cfg, gab) {
   var codigo = String(folha.codigo_folha || '').trim().toUpperCase()
   if (cfg.codigoFolha && codigo && codigo !== cfg.codigoFolha.toUpperCase()) {
     avisos.push('código da folha (' + codigo + ') diferente do configurado (' + cfg.codigoFolha + ')')
+  }
+
+  // Pega gabarito incompleto: aba Gabarito com 8 questões para uma
+  // folha impressa com 45 é erro de configuração, não de leitura.
+  var impressas = parseInt(folha.total_questoes_impressas, 10)
+  if (!isNaN(impressas) && impressas > 0 && impressas !== gab.questoes.length) {
+    avisos.push('a folha tem ' + impressas + ' questões impressas, mas a aba Gabarito lista ' +
+                gab.questoes.length + ' — confira o gabarito')
   }
 
   var validas = {}

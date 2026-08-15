@@ -175,9 +175,11 @@ API de novo.
 
 ### Modelo e custo
 
-O padrão é `gemini-2.5-flash`, que dá conta de folha bem escaneada por uma
-fração de centavo cada. Se muitas folhas voltarem `?`, troque para
-`gemini-2.5-pro` na Config — mais caro e mais lento, lê melhor marca fraca.
+O padrão é `gemini-2.5-pro`. Em teste real com folha de 45 questões, o
+`gemini-2.5-flash` **alucinou a leitura com confiança** — transcreveu letras
+que não estavam marcadas e ecoou o "7" do exemplo impresso na folha como se
+fosse o número de chamada. Erro confiante é pior que `?`: não levanta revisão.
+Use `flash` só em folha curta (até ~20 questões) e confira por amostragem.
 
 ## 6b. Alternativa: corrigir no chat do Gemini
 
