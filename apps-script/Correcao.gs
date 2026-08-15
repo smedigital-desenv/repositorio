@@ -102,6 +102,7 @@ function prepararPlanilha() {
       ['modelo',         'gemini-2.5-pro', 'Modelo do Gemini. pro é o confiável para grade de respostas; flash é mais barato mas erra folha densa'],
       ['nota_maxima',    10, 'Escala da nota'],
       ['turma_padrao',   '', 'Usado quando a IA não consegue ler o campo TURMA da folha (opcional)'],
+      ['leitura_dupla',  'SIM', 'Lê cada folha 2x com estratégias diferentes; divergência vira "?" e vai para revisão. Gasta 2 requisições por arquivo. Só desligue (NAO) se a cota apertar'],
     ])
     config.setColumnWidth(1, 150)
     config.setColumnWidth(2, 220)
@@ -237,6 +238,8 @@ function obterConfig() {
     modelo: String(cfg.modelo || 'gemini-2.5-pro').trim(),
     notaMaxima: Number(cfg.nota_maxima) || 10,
     turmaPadrao: String(cfg.turma_padrao || '').trim(),
+    // Ligada por padrão: quem quiser economizar cota desliga por escrito.
+    leituraDupla: String(cfg.leitura_dupla || 'SIM').trim().toUpperCase() !== 'NAO',
   }
 }
 
@@ -302,7 +305,6 @@ function corrigirFolhas() {
     return
   }
 
-  var prompt = construirPrompt(cfg, gab.questoes)
   var processados = 0, falhas = 0, faltando = 0
 
   for (var i = 0; i < pendentes.length; i++) {
@@ -313,7 +315,7 @@ function corrigirFolhas() {
 
     var arquivo = pendentes[i]
     try {
-      var folhas = lerFolha(arquivo, prompt, cfg, chave)
+      var folhas = lerFolha(arquivo, cfg, chave, gab.questoes)
       for (var j = 0; j < folhas.length; j++) {
         gravarFolha(aba, indice, folhas[j], arquivo, cfg, gab)
       }
@@ -363,8 +365,45 @@ function listarArquivos(pastaId) {
 
 // ── Chamada ao Gemini ────────────────────────────────────────────
 
-function construirPrompt(cfg, questoes) {
+/**
+ * Duas estratégias de leitura, de propósito:
+ *
+ *   'colunas'  — acha o quadrado rabiscado e sobe até o cabeçalho
+ *                para saber a coluna.
+ *   'fantasma' — lê as letras impressas que FICARAM VISÍVEIS na
+ *                linha; a que sumiu debaixo do rabisco é a marcada.
+ *
+ * A mesma imagem passa pelas duas. Onde discordarem, a resposta
+ * vira "?" e a folha vai para conferência. Erro de leitura com o
+ * mesmo modelo e temperatura 0 é determinístico — rodar duas vezes
+ * a MESMA estratégia daria o mesmo erro duas vezes; estratégias
+ * diferentes erram em lugares diferentes, e a divergência denuncia.
+ * (No teste real que motivou isto, o flash errou 4 questões de 45
+ * com confiança — nenhuma teria passado por um par de estratégias.)
+ */
+function construirPrompt(cfg, questoes, estrategia) {
   var letras = cfg.letras.join(', ')
+
+  var regrasEstrategia = estrategia === 'fantasma' ? [
+    'Trabalhe linha por linha usando as letras impressas nos quadrados:',
+    '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
+    '   o número da questão pela posição na tabela.',
+    '2. Liste quais letras impressas em cinza continuam VISÍVEIS na linha',
+    '   (quadrados não marcados deixam a letra à mostra).',
+    '3. A letra que está encoberta por rabisco de caneta é a marcada. Se todas',
+    '   estiverem visíveis, a linha está em branco ("-"). Se mais de uma',
+    '   estiver encoberta, é marca dupla ("*").',
+  ] : [
+    'Trabalhe bloco por bloco, linha por linha, sem pular nem resumir:',
+    '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
+    '   o número da questão pela posição na tabela.',
+    '2. Ache o quadrado com rabisco de caneta e suba pela coluna até o',
+    '   cabeçalho para identificar a letra. Confira com a letra impressa nos',
+    '   quadrados vizinhos da mesma coluna, acima ou abaixo.',
+    '3. Não use padrão, sequência ou "impressão geral": cada linha é uma',
+    '   observação independente da imagem.',
+  ]
+
   return [
     'Transcreva as marcações desta folha de resposta escaneada.',
     '',
@@ -397,13 +436,7 @@ function construirPrompt(cfg, questoes) {
     '',
     '## Regras de leitura',
     '',
-    'Trabalhe bloco por bloco, linha por linha, sem pular nem resumir:',
-    '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
-    '   o número da questão pela posição na tabela.',
-    '2. Olhe cada um dos quadrados daquela linha, um a um, e diga qual tem',
-    '   rabisco de caneta. Só então registre a letra da coluna.',
-    '3. Não use padrão, sequência ou "impressão geral": cada linha é uma',
-    '   observação independente da imagem.',
+  ].concat(regrasEstrategia).concat([
     '',
     '- Devolva exatamente ' + questoes.length + ' itens em "respostas", um para cada número',
     '  da lista acima, em ordem crescente.',
@@ -420,6 +453,10 @@ function construirPrompt(cfg, questoes) {
     '  Caixas em branco, sem dígito manuscrito, são "?" — não deduza o valor da',
     '  grade ao lado nem de nenhum texto impresso.',
     '- chamada_marcada: os dígitos pintados nas linhas D e U da grade.',
+    '  CUIDADO: a primeira célula de cada linha é o RÓTULO ("D" ou "U"), não é',
+    '  a coluna do dígito 0. Identifique o dígito pelo número impresso no',
+    '  cabeçalho daquela coluna e pelo dígito em cinza dentro dos quadrados',
+    '  vizinhos — nunca contando células a partir da esquerda.',
     'Se uma fonte estiver ilegível ou em branco, devolva "?" naquele campo.',
     'Quem decide o que fazer com a divergência não é você.',
     '',
@@ -434,7 +471,7 @@ function construirPrompt(cfg, questoes) {
     'Em total_questoes_impressas, conte quantas linhas de questão a folha',
     'realmente tem (o rodapé dela diz "N QUESTOES") — mesmo que seja diferente',
     'da lista acima.',
-  ].join('\n')
+  ]).join('\n')
 }
 
 function esquemaResposta() {
@@ -473,7 +510,68 @@ function esquemaResposta() {
   }
 }
 
-function lerFolha(arquivo, prompt, cfg, chave) {
+/**
+ * Lê um arquivo com duas estratégias e mescla. Onde as leituras
+ * divergirem, a marcação vira "?" — melhor uma folha a mais na
+ * conferência do que uma letra errada com cara de certa na nota.
+ */
+function lerFolha(arquivo, cfg, chave, questoes) {
+  var a = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'colunas'), cfg, chave)
+  if (!cfg.leituraDupla) return a
+  var b = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'fantasma'), cfg, chave)
+  return mesclarLeituras(a, b)
+}
+
+function mesclarLeituras(a, b) {
+  if (a.length !== b.length) {
+    // Nem no número de páginas as leituras concordaram: usa a primeira
+    // e condena tudo à revisão via observação.
+    for (var k = 0; k < a.length; k++) {
+      a[k].observacao = ((a[k].observacao || '') +
+        ' as duas leituras viram quantidades diferentes de folhas no arquivo (' +
+        a.length + ' e ' + b.length + ')').trim()
+    }
+    return a
+  }
+
+  for (var i = 0; i < a.length; i++) {
+    var fa = a[i], fb = b[i]
+    var divergentes = []
+
+    var porQuestaoB = {}
+    var respB = fb.respostas || []
+    for (var j = 0; j < respB.length; j++) {
+      porQuestaoB[parseInt(respB[j].questao, 10)] = String(respB[j].marcada || '').trim().toUpperCase()
+    }
+
+    var respA = fa.respostas || []
+    for (var m = 0; m < respA.length; m++) {
+      var num = parseInt(respA[m].questao, 10)
+      var vA = String(respA[m].marcada || '').trim().toUpperCase()
+      var vB = porQuestaoB[num]
+      if (vB !== undefined && vA !== vB) {
+        respA[m].marcada = '?'
+        divergentes.push(num)
+      }
+    }
+
+    if (String(fa.chamada_escrita).trim() !== String(fb.chamada_escrita).trim()) {
+      fa.chamada_escrita = '?'
+    }
+    if (String(fa.chamada_marcada).trim() !== String(fb.chamada_marcada).trim()) {
+      fa.chamada_marcada = '?'
+      divergentes.push('chamada')
+    }
+
+    if (divergentes.length) {
+      fa.observacao = ((fa.observacao || '') +
+        ' as duas leituras divergiram em: ' + divergentes.join(', ')).trim()
+    }
+  }
+  return a
+}
+
+function lerFolhaUmaVez(arquivo, prompt, cfg, chave) {
   var blob = arquivo.getBlob()
   var bytes = blob.getBytes()
   if (bytes.length > MAX_BYTES_ARQUIVO) {

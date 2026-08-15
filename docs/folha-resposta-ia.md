@@ -190,12 +190,31 @@ A escolha depende do nível da chave:
   é o mais confiável em grade densa.
 
 **A cota gratuita que dói é a diária (~20 requisições/dia)** — e o script faz
-**1 requisição por arquivo, não por folha**. Escaneie a turma em UM PDF com
-várias páginas (lotes de ~10 folhas por PDF): o script junta as páginas pelo
-número de chamada, e 20 PDFs/dia × 10 páginas cobrem 200 folhas/dia.
+**1 requisição por arquivo, não por folha** (2 com leitura dupla, ver abaixo).
+Escaneie a turma em UM PDF com várias páginas (lotes de ~10 folhas por PDF):
+o script junta as páginas pelo número de chamada. Com leitura dupla ligada,
+10 PDFs/dia × 10 páginas cobrem 100 folhas/dia.
 
 Modelo sem cota falha na hora com mensagem clara (sem ficar retentando), e o
 aviso aponta para a lista de modelos.
+
+### Leitura dupla (ligada por padrão)
+
+Teste real com `gemini-3.7-flash` numa folha de 45 questões: 41 transcritas
+certas e **4 erradas com confiança** — letra errada, sem `?`, sem alarme. E o
+número de chamada saiu deslocado uma coluna (leu 25 onde estava 14), por
+contar o rótulo D/U como coluna do zero.
+
+Contra erro confiante não há aviso que funcione dentro de uma única leitura.
+Por isso o script lê **cada folha duas vezes com estratégias diferentes** —
+uma acha o rabisco e sobe até o cabeçalho da coluna; a outra lista as letras
+impressas que ficaram visíveis e deduz a marcada pela que sumiu. Com
+temperatura 0, repetir a mesma estratégia repetiria o mesmo erro; estratégias
+diferentes erram em lugares diferentes, e **onde divergem a resposta vira `?`
+e a folha vai para conferência**.
+
+Custo: 2 requisições por arquivo em vez de 1. `leitura_dupla = NAO` na Config
+desliga — só faça isso com modelo pago (Pro), nunca com flash gratuito.
 
 ## 6b. Alternativa: corrigir no chat do Gemini
 
