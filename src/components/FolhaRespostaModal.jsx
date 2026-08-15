@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { X, Printer, ClipboardCopy, Download, ScanLine } from 'lucide-react'
+import { X, Printer, ClipboardCopy, Download, ScanLine, Table } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   LETRAS,
@@ -11,6 +11,7 @@ import {
   imprimirFolhaResposta,
   dadosCorrecao,
   promptGemini,
+  gabaritoParaPlanilha,
 } from '../services/folhaResposta'
 import styles from './FolhaRespostaModal.module.css'
 
@@ -170,6 +171,10 @@ export default function FolhaRespostaModal({ prova, onClose }) {
             <div className={styles.acoes}>
               <button className={styles.btnPrimary} onClick={imprimir}>
                 <Printer size={14} /> Imprimir / PDF
+              </button>
+              <button className={styles.btnSecondary}
+                onClick={() => copiar(gabaritoParaPlanilha(prova, opcoes), 'Gabarito copiado! Cole na aba "Gabarito" da planilha de correção.')}>
+                <Table size={14} /> Copiar gabarito para planilha
               </button>
               <button className={styles.btnSecondary}
                 onClick={() => copiar(promptGemini(prova, opcoes), 'Prompt copiado! Cole no Gemini junto com as folhas escaneadas.')}>

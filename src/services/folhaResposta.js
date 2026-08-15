@@ -535,6 +535,17 @@ export function dadosCorrecao(prova, opcoes = {}) {
   }
 }
 
+/**
+ * Gabarito em duas colunas separadas por TAB — o formato que a aba
+ * "Gabarito" da planilha de correção (apps-script/Correcao.gs) espera
+ * ao colar. Questão sem alternativa correta sai com a letra vazia.
+ */
+export function gabaritoParaPlanilha(prova, opcoes = {}) {
+  const d = dadosCorrecao(prova, opcoes)
+  const linhas = d.questoes.map(n => `${n}\t${d.gabarito[n] || ''}`)
+  return ['Questão\tCorreta', ...linhas].join('\n')
+}
+
 /** Prompt pronto para colar no Gemini junto com as folhas escaneadas. */
 export function promptGemini(prova, opcoes = {}) {
   const d = dadosCorrecao(prova, opcoes)

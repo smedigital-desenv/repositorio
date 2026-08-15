@@ -5,6 +5,16 @@ e deixar o Gemini transcrever e corrigir as marcações.
 
 A tela fica em **Provas → abrir uma prova → Folha de respostas**.
 
+Há dois caminhos para corrigir, e o recomendado é o primeiro:
+
+1. **Planilha com Apps Script** (`apps-script/Correcao.gs`) — o script lê as
+   folhas direto da pasta do Drive, chama a API do Gemini e escreve o resultado
+   na aba "Respostas" da planilha. O modelo só transcreve; quem compara com o
+   gabarito e calcula a nota é o script. Ver [seção 6](#6-corrigir-pela-planilha-recomendado).
+2. **Chat do Gemini** — anexar as folhas e colar o prompt copiado da tela.
+   Serve para poucas folhas ou para quem não quer configurar a planilha.
+   Ver [seção 6b](#6b-alternativa-corrigir-no-chat-do-gemini).
+
 ---
 
 ## 1. Por que a folha é desenhada assim
@@ -107,10 +117,73 @@ tem número de chamada e, se a linha de nome for usada, nome de criança.
 
 ---
 
-## 6. Corrigir no Gemini
+## 6. Corrigir pela planilha (recomendado)
 
-Na tela da folha, **Copiar prompt do Gemini**. O prompt sai pronto, já com o
-gabarito da prova, a lista exata de questões e o formato de saída.
+O script `apps-script/Correcao.gs` roda dentro de uma planilha Google e faz o
+ciclo inteiro: lê a pasta do Drive, manda cada folha para a API do Gemini,
+compara com o gabarito e escreve uma linha por aluno na aba **Respostas**.
+
+Diferença importante em relação ao chat: **o modelo só transcreve as marcas**.
+Quem compara com o gabarito, conta acertos e calcula a nota é o script.
+Modelo que recebe o gabarito junto com a imagem tende a "ler" o que o gabarito
+manda quando a marca está ambígua — e erro de aritmética de modelo é
+silencioso. Separando, a leitura fica sem viés e a conta fica exata.
+
+### Instalação (uma vez)
+
+1. Crie uma planilha Google nova.
+2. **Extensões → Apps Script**, apague o conteúdo e cole `apps-script/Correcao.gs`.
+3. Salve, volte à planilha e recarregue. Aparece o menu **Correção IA**.
+4. **Correção IA → Preparar planilha** — cria as abas Config, Gabarito,
+   Respostas, Itens e Log.
+5. Gere uma chave de API em [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   e salve-a por **Correção IA → Configurar chave da API**. A chave fica nas
+   Propriedades do Script, não em célula: planilha se compartilha por engano,
+   propriedade do script não.
+
+> A chave da API é credencial. Pelo padrão da rede, **não** pode ir para
+> repositório, mensagem de commit nem célula de planilha compartilhada.
+
+### A cada prova
+
+1. Na aba **Config**: o ID da pasta do Drive (o script aceita a URL inteira
+   colada), o código da folha (`FR-XXXXXX`) e o número de alternativas.
+2. No Repositório Pedagógico: **Folha de respostas → Copiar gabarito para
+   planilha**, e cole na aba **Gabarito** (duas colunas: questão e letra).
+3. **Correção IA → Corrigir folhas da pasta.**
+
+O script processa o que der em ~4,5 minutos (limite do Apps Script) e avisa
+quantos arquivos ficaram. É só rodar de novo: **os já processados são pulados**,
+porque o ID do arquivo fica gravado na linha.
+
+### O que sai em cada aba
+
+| Aba | Conteúdo |
+|---|---|
+| **Respostas** | Uma linha por aluno: chamada, turma, acertos, nota, uma coluna por questão. Erro em vermelho, branco/dupla/ilegível em amarelo, questão sem gabarito em cinza |
+| **Itens** | Estatística por questão: % de acerto e quantos marcaram cada alternativa — mostra questão mal formulada e distrator forte |
+| **Log** | O que foi processado e qualquer erro de leitura ou de API |
+
+Folha com problema (conflito de chamada, marca dupla, ilegível, código de outra
+prova) sai com **Revisar = SIM** e o motivo por extenso. Arquivo de duas páginas
+do mesmo aluno é juntado na mesma linha pela chamada; se as páginas divergirem
+na mesma questão, a célula vira `?` e o motivo registra a divergência.
+
+O professor pode corrigir uma marcação à mão direto na célula e usar
+**Correção IA → Recalcular acertos e estatísticas** — recalcula tudo sem gastar
+API de novo.
+
+### Modelo e custo
+
+O padrão é `gemini-2.5-flash`, que dá conta de folha bem escaneada por uma
+fração de centavo cada. Se muitas folhas voltarem `?`, troque para
+`gemini-2.5-pro` na Config — mais caro e mais lento, lê melhor marca fraca.
+
+## 6b. Alternativa: corrigir no chat do Gemini
+
+Para poucas folhas, sem configurar nada: na tela da folha, **Copiar prompt do
+Gemini**. O prompt sai pronto, com o gabarito da prova, a lista exata de
+questões e o formato de saída.
 
 1. Abra o Gemini e anexe as folhas escaneadas.
 2. Cole o prompt.
@@ -120,11 +193,15 @@ Lotes de **10 a 20 folhas por vez** funcionam melhor que a turma inteira de uma
 vez: a atenção do modelo se dilui em anexo muito grande, e conferir um lote
 pequeno que deu errado custa menos que refazer tudo.
 
+Nesse caminho o modelo também soma acertos e calcula a nota — **confira as
+contas por amostragem**, porque aritmética de modelo erra sem avisar. É o
+motivo de a planilha ser o caminho recomendado.
+
 O botão **Baixar gabarito (JSON)** guarda o gabarito usado naquela correção.
 Vale arquivar junto com os resultados: se a prova for editada depois, é o que
 prova qual gabarito valeu.
 
-### O que a IA devolve
+### O que a IA devolve (no chat)
 
 ```json
 [
@@ -183,7 +260,7 @@ Duas conferências rápidas que pegam quase todo erro sistemático:
   transcrita mas volta como `sem_gabarito`. A tela avisa quais são antes de
   imprimir.
 - **A leitura não é auditada por ninguém além do professor.** O sistema não
-  guarda resultado de correção: o JSON fica com quem corrigiu.
+  guarda resultado de correção: fica na planilha (ou no JSON) de quem corrigiu.
 - **Acima de 60 questões a folha usa duas páginas.** As duas repetem o número de
   chamada, e o prompt manda juntar as páginas do mesmo aluno.
 
@@ -196,10 +273,12 @@ Duas conferências rápidas que pegam quase todo erro sistemático:
 | `src/services/folhaResposta.js` | Geração do HTML da folha, layout, gabarito e prompt do Gemini |
 | `src/components/FolhaRespostaModal.jsx` | Tela de opções, pré-visualização e ações |
 | `src/pages/provas/ProvaDetalhe.jsx` | Botão que abre a tela |
+| `apps-script/Correcao.gs` | Script da planilha: leitura da pasta, chamada à API e gravação dos resultados |
 
-Ao mexer no layout da folha, **mexa no prompt junto**. O prompt descreve a folha
-para o modelo: grade que muda sem o prompt mudar é erro que aparece só na
-correção da primeira turma, quando já é tarde.
+Ao mexer no layout da folha, **mexa nos DOIS prompts junto** — o de
+`folhaResposta.js` (chat) e o de `Correcao.gs` (planilha). Os prompts descrevem
+a folha para o modelo: grade que muda sem o prompt mudar é erro que aparece só
+na correção da primeira turma, quando já é tarde.
 
 Vale checar depois de qualquer mudança de layout:
 
