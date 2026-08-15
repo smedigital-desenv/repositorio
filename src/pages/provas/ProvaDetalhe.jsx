@@ -2,10 +2,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buscarProva, registrarUsoProva, criarProva, mudarStatusProva } from '../../services/provas'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks, Clock, CheckCircle, XCircle, Send } from 'lucide-react'
+import { ChevronLeft, Printer, Pencil, FileText, Copy, BookOpen, ListChecks, Clock, CheckCircle, XCircle, Send, ScanLine } from 'lucide-react'
 import { gerarWordProva } from '../../services/gerarWord'
 import { useState, useEffect } from 'react'
 import { CABECALHO_PADRAO } from '../../components/ProvaHeader'
+import FolhaRespostaModal from '../../components/FolhaRespostaModal'
 import toast from 'react-hot-toast'
 import styles from './ProvaDetalhe.module.css'
 
@@ -44,6 +45,7 @@ export default function ProvaDetalhe() {
   })
 
   const [modoVisualizacao, setModoVisualizacao] = useState('normal')
+  const [folhaAberta, setFolhaAberta] = useState(false)
 
   const mutarStatus = useMutation({
     mutationFn: ({ status, justificativa }) => mudarStatusProva(id, status, justificativa),
@@ -289,6 +291,9 @@ export default function ProvaDetalhe() {
           <button className={styles.btnSecondary} onClick={handleWord}>
             <FileText size={14} /> Word
           </button>
+          <button className={styles.btnSecondary} onClick={() => setFolhaAberta(true)}>
+            <ScanLine size={14} /> Folha de respostas
+          </button>
           {prova.visibilidade === 'rede' && prova.autor_id !== usuario?.id && (
             <button className={styles.btnCopiar}
               onClick={() => copiarProva.mutate()}
@@ -492,6 +497,10 @@ export default function ProvaDetalhe() {
           </>
         )}
       </div>
+
+      {folhaAberta && (
+        <FolhaRespostaModal prova={prova} onClose={() => setFolhaAberta(false)} />
+      )}
     </div>
   )
 }

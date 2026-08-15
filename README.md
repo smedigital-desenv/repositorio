@@ -97,6 +97,11 @@ src/
 └── utils/            # Utilitários gerais
 ```
 
+## Documentação
+
+- [Folha de respostas com correção por IA](docs/folha-resposta-ia.md) — impressão,
+  escaneamento e correção das provas objetivas pelo Gemini.
+
 ## Perfis de acesso
 
 | Papel | Permissões |
