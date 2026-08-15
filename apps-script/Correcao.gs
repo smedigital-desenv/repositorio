@@ -34,6 +34,7 @@ var ABA_GABARITO  = 'Gabarito'
 var ABA_RESPOSTAS = 'Respostas'
 var ABA_ITENS     = 'Itens'
 var ABA_LOG       = 'Log'
+var ABA_MODELOS   = 'Modelos'
 
 var PROP_CHAVE = 'GEMINI_API_KEY'
 
@@ -77,6 +78,7 @@ function onOpen() {
     .createMenu('Correção IA')
     .addItem('Preparar planilha', 'prepararPlanilha')
     .addItem('Configurar chave da API…', 'configurarChave')
+    .addItem('Listar modelos disponíveis', 'listarModelosDaApi')
     .addSeparator()
     .addItem('Corrigir folhas da pasta', 'corrigirFolhas')
     .addItem('Recalcular acertos e estatísticas', 'recalcularTudo')
@@ -147,6 +149,58 @@ function configurarChave() {
 
   PropertiesService.getScriptProperties().setProperty(PROP_CHAVE, chave)
   ui.alert('Chave salva.')
+}
+
+/**
+ * Pergunta à API quais modelos ESTA chave enxerga e escreve na aba
+ * Modelos. Evita chutar ID: o nome de vitrine ("Gemini 3.7 Flash")
+ * nem sempre bate com o ID da API, e ID errado é 404.
+ */
+function listarModelosDaApi() {
+  var ui = SpreadsheetApp.getUi()
+  var chave = PropertiesService.getScriptProperties().getProperty(PROP_CHAVE)
+  if (!chave) { ui.alert('Configure a chave da API primeiro (menu Correção IA).'); return }
+
+  var resp = UrlFetchApp.fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000',
+    { headers: { 'x-goog-api-key': chave }, muteHttpExceptions: true })
+
+  if (resp.getResponseCode() !== 200) {
+    ui.alert('A API respondeu HTTP ' + resp.getResponseCode() + ':\n' +
+             resp.getContentText().slice(0, 400))
+    return
+  }
+
+  var modelos = (JSON.parse(resp.getContentText()).models || [])
+    .filter(function (m) {
+      return (m.supportedGenerationMethods || []).indexOf('generateContent') !== -1
+    })
+
+  var aba = obterOuCriarAba(SpreadsheetApp.getActiveSpreadsheet(), ABA_MODELOS)
+  aba.clear()
+  aba.getRange(1, 1, 1, 3).setValues([[
+    'ID (cole este valor em Config → modelo)', 'Nome', 'Descrição']])
+  aba.getRange(1, 1, 1, 3).setFontWeight('bold')
+  aba.setFrozenRows(1)
+
+  if (modelos.length) {
+    aba.getRange(2, 1, modelos.length, 3).setValues(modelos.map(function (m) {
+      return [
+        String(m.name || '').replace(/^models\//, ''),
+        m.displayName || '',
+        String(m.description || '').slice(0, 180),
+      ]
+    }))
+  }
+  aba.setColumnWidth(1, 260)
+  aba.setColumnWidth(2, 200)
+  aba.setColumnWidth(3, 520)
+  aba.activate()
+
+  ui.alert(modelos.length + ' modelo(s) disponíveis para esta chave — veja a aba Modelos.\n\n' +
+    'Atenção: aparecer na lista não garante cota. No nível gratuito alguns ' +
+    'modelos (ex.: os Pro) têm limite diário ZERO e falham com erro de cota. ' +
+    'Confira os limites em aistudio.google.com → Rate limits.')
 }
 
 // ── Leitura da configuração ──────────────────────────────────────
@@ -478,7 +532,16 @@ function requisitarComRetentativa(url, chave, corpo) {
     var codigo = resp.getResponseCode()
     if (codigo === 200) return JSON.parse(resp.getContentText())
 
-    ultimoErro = 'HTTP ' + codigo + ': ' + resp.getContentText().slice(0, 300)
+    var corpoErro = resp.getContentText()
+    ultimoErro = 'HTTP ' + codigo + ': ' + corpoErro.slice(0, 300)
+
+    // Cota diária ZERO (modelo sem acesso no nível gratuito, ex.: Pro)
+    // não passa esperando — falha na hora com instrução clara.
+    if (codigo === 429 && /"quotaValue"\s*:\s*"0"|limit:\s*0\b/.test(corpoErro)) {
+      throw new Error('Este modelo tem cota ZERO para a sua chave (nível gratuito). ' +
+        'Troque o "modelo" na aba Config por um com cota — use o menu ' +
+        '"Listar modelos disponíveis" e confira os limites no AI Studio.')
+    }
 
     // 429 é cota por minuto; 5xx é instabilidade. Ambos passam esperando.
     // 400/403 é chave, modelo ou permissão — insistir não resolve.

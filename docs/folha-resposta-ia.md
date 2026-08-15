@@ -173,13 +173,29 @@ O professor pode corrigir uma marcação à mão direto na célula e usar
 **Correção IA → Recalcular acertos e estatísticas** — recalcula tudo sem gastar
 API de novo.
 
-### Modelo e custo
+### Modelo, cota e custo
 
-O padrão é `gemini-2.5-pro`. Em teste real com folha de 45 questões, o
-`gemini-2.5-flash` **alucinou a leitura com confiança** — transcreveu letras
-que não estavam marcadas e ecoou o "7" do exemplo impresso na folha como se
-fosse o número de chamada. Erro confiante é pior que `?`: não levanta revisão.
-Use `flash` só em folha curta (até ~20 questões) e confira por amostragem.
+Em teste real com folha de 45 questões, o `gemini-2.5-flash` **alucinou a
+leitura com confiança** — transcreveu letras que não estavam marcadas e ecoou
+o "7" do exemplo impresso na folha como se fosse o número de chamada. Erro
+confiante é pior que `?`: não levanta revisão. Evite o 2.5 Flash.
+
+A escolha depende do nível da chave:
+
+- **Chave gratuita** (sem faturamento): os modelos **Pro têm cota diária
+  ZERO** — nem uma chamada. Use o **Flash de geração mais nova** que a chave
+  enxergar (menu **Correção IA → Listar modelos disponíveis** mostra os IDs
+  exatos). Os "Flash Lite" têm cota diária alta mas leem pior; último recurso.
+- **Chave com faturamento**: use o Pro mais recente. Custa centavos por lote e
+  é o mais confiável em grade densa.
+
+**A cota gratuita que dói é a diária (~20 requisições/dia)** — e o script faz
+**1 requisição por arquivo, não por folha**. Escaneie a turma em UM PDF com
+várias páginas (lotes de ~10 folhas por PDF): o script junta as páginas pelo
+número de chamada, e 20 PDFs/dia × 10 páginas cobrem 200 folhas/dia.
+
+Modelo sem cota falha na hora com mensagem clara (sem ficar retentando), e o
+aviso aponta para a lista de modelos.
 
 ## 6b. Alternativa: corrigir no chat do Gemini
 
