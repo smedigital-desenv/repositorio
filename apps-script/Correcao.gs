@@ -147,7 +147,7 @@ function configurarChave() {
 
   if (resposta.getSelectedButton() !== ui.Button.OK) return
 
-  var chave = resposta.getResponseText().trim()
+  var chave = limparChave(resposta.getResponseText())
   if (!chave) { ui.alert('Nada foi salvo: a chave veio em branco.'); return }
 
   var problema = problemaNaChave(chave)
@@ -161,11 +161,21 @@ function configurarChave() {
   ui.alert('Chave salva.')
 }
 
+/** Tira espaço, quebra de linha e aspas que vêm junto na cópia. */
+function limparChave(bruto) {
+  return String(bruto || '').replace(/\s+/g, '').replace(/^["']|["']$/g, '')
+}
+
 /**
- * Chave do AI Studio começa com "AIza". Token OAuth começa com
- * "AQ." ou "ya29." — colar um no lugar do outro é o engano mais
- * comum aqui, e o erro que a API devolve ("Expected OAuth 2 access
- * token") aponta para o lado errado do problema.
+ * Chave do AI Studio: "AIza" + 35 caracteres, 39 no total.
+ *
+ * Dois enganos já vistos em campo, ambos com mensagem de erro da
+ * API que aponta para o lado errado:
+ * - token OAuth ("AQ.", "ya29.") no lugar da chave → 401 pedindo
+ *   "OAuth 2 access token", justamente o que foi colado;
+ * - chave truncada, copiada de campo rolado para a direita (perde o
+ *   "AIz" do começo) → 400 "API key not valid", sem dizer que o
+ *   problema é tamanho.
  */
 function problemaNaChave(chave) {
   if (/^(AQ\.|ya29\.)/.test(chave)) {
@@ -173,8 +183,18 @@ function problemaNaChave(chave) {
            'A chave certa começa com "AIza" e sai de aistudio.google.com/apikey.'
   }
   if (chave.indexOf('AIza') !== 0) {
-    return 'Chave da API do Gemini começa com "AIza". ' +
-           'Gere em aistudio.google.com/apikey.'
+    var dica = /^Iza|^za|^aSy|^Sy/.test(chave)
+      ? '\n\nParece uma chave com o começo cortado — o campo de valor rola para a ' +
+        'direita e a cópia perde os primeiros caracteres. Copie do AI Studio, não ' +
+        'do campo da planilha.'
+      : ''
+    return 'Chave da API do Gemini começa com "AIza". Gere em aistudio.google.com/apikey.' + dica
+  }
+  if (chave.length !== 39) {
+    return 'A chave tem ' + chave.length + ' caracteres; a do AI Studio tem 39. ' +
+           (chave.length < 39
+             ? 'Faltou parte na cópia — selecione o valor inteiro (o campo rola para a direita).'
+             : 'Veio caractere a mais junto na cópia.')
   }
   return null
 }
@@ -186,8 +206,11 @@ function problemaNaChave(chave) {
  */
 function listarModelosDaApi() {
   var ui = SpreadsheetApp.getUi()
-  var chave = PropertiesService.getScriptProperties().getProperty(PROP_CHAVE)
+  var chave = limparChave(PropertiesService.getScriptProperties().getProperty(PROP_CHAVE))
   if (!chave) { ui.alert('Configure a chave da API primeiro (menu Correção IA).'); return }
+
+  var probl = problemaNaChave(chave)
+  if (probl) { ui.alert('A chave configurada não serve\n\n' + probl); return }
 
   var resp = UrlFetchApp.fetch(
     'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000',
@@ -311,7 +334,7 @@ function corrigirFolhas() {
   var inicio = Date.now()
   var ui = SpreadsheetApp.getUi()
 
-  var chave = PropertiesService.getScriptProperties().getProperty(PROP_CHAVE)
+  var chave = limparChave(PropertiesService.getScriptProperties().getProperty(PROP_CHAVE))
   if (!chave) { ui.alert('Configure a chave da API primeiro (menu Correção IA).'); return }
 
   // Barra a credencial errada antes de gastar cota e tempo com uma

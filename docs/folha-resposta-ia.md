@@ -190,6 +190,14 @@ A escolha depende do nível da chave:
 - **Chave com faturamento**: use o Pro mais recente. Custa centavos por lote e
   é o mais confiável em grade densa.
 
+> **Chave nova não renova cota.** O limite gratuito é por *projeto/conta*, não
+> por chave: gerar uma segunda chave na mesma conta não dá mais nenhuma
+> requisição. E multiplicar contas para furar a cota viola os termos do Google
+> e arrisca bloqueio. Os caminhos honestos quando o limite aperta são ativar
+> faturamento, esperar a renovação diária, reduzir requisições (lotes maiores,
+> `leitura_dupla = NAO`) ou cada professor usar a própria chave na própria
+> planilha.
+
 **A cota gratuita que dói é a diária (~20 requisições/dia)** — e o script faz
 **1 requisição por arquivo, não por folha** (2 com leitura dupla, ver abaixo).
 Escaneie a turma em UM PDF com várias páginas (lotes de ~10 folhas por PDF):
