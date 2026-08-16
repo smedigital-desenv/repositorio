@@ -150,8 +150,33 @@ function configurarChave() {
   var chave = resposta.getResponseText().trim()
   if (!chave) { ui.alert('Nada foi salvo: a chave veio em branco.'); return }
 
+  var problema = problemaNaChave(chave)
+  if (problema) {
+    var segue = ui.alert('Isso não parece uma chave de API',
+      problema + '\n\nSalvar assim mesmo?', ui.ButtonSet.YES_NO)
+    if (segue !== ui.Button.YES) return
+  }
+
   PropertiesService.getScriptProperties().setProperty(PROP_CHAVE, chave)
   ui.alert('Chave salva.')
+}
+
+/**
+ * Chave do AI Studio começa com "AIza". Token OAuth começa com
+ * "AQ." ou "ya29." — colar um no lugar do outro é o engano mais
+ * comum aqui, e o erro que a API devolve ("Expected OAuth 2 access
+ * token") aponta para o lado errado do problema.
+ */
+function problemaNaChave(chave) {
+  if (/^(AQ\.|ya29\.)/.test(chave)) {
+    return 'Esse valor é um token OAuth do Google, não uma chave da API do Gemini.\n' +
+           'A chave certa começa com "AIza" e sai de aistudio.google.com/apikey.'
+  }
+  if (chave.indexOf('AIza') !== 0) {
+    return 'Chave da API do Gemini começa com "AIza". ' +
+           'Gere em aistudio.google.com/apikey.'
+  }
+  return null
 }
 
 /**
@@ -169,8 +194,12 @@ function listarModelosDaApi() {
     { headers: { 'x-goog-api-key': chave }, muteHttpExceptions: true })
 
   if (resp.getResponseCode() !== 200) {
+    var dica = (resp.getResponseCode() === 401 || resp.getResponseCode() === 403)
+      ? '\n\nA chave precisa ser a do AI Studio (começa com "AIza"). ' +
+        'Token OAuth ("AQ." ou "ya29.") não funciona aqui.'
+      : ''
     ui.alert('A API respondeu HTTP ' + resp.getResponseCode() + ':\n' +
-             resp.getContentText().slice(0, 400))
+             resp.getContentText().slice(0, 400) + dica)
     return
   }
 
@@ -284,6 +313,15 @@ function corrigirFolhas() {
 
   var chave = PropertiesService.getScriptProperties().getProperty(PROP_CHAVE)
   if (!chave) { ui.alert('Configure a chave da API primeiro (menu Correção IA).'); return }
+
+  // Barra a credencial errada antes de gastar cota e tempo com uma
+  // requisição que voltaria 401.
+  var problema = problemaNaChave(chave)
+  if (problema) {
+    ui.alert('A chave configurada não serve\n\n' + problema +
+      '\n\nCorrija em Correção IA → Configurar chave da API.')
+    return
+  }
 
   var cfg, gab
   try {
@@ -812,6 +850,17 @@ function requisitarComRetentativa(url, chave, corpo) {
 
     var corpoErro = resp.getContentText()
     ultimoErro = 'HTTP ' + codigo + ': ' + corpoErro.slice(0, 300)
+
+    // A mensagem da API em 401 fala em "Expected OAuth 2 access
+    // token" e manda para a documentação de OAuth — o que aponta
+    // para o lado errado do problema. A causa quase sempre é chave
+    // ausente, colada errada ou token OAuth no lugar da chave.
+    if (codigo === 401 || codigo === 403) {
+      throw new Error('A API recusou a credencial (HTTP ' + codigo + '). Verifique se a ' +
+        'propriedade GEMINI_API_KEY contém a chave do AI Studio (começa com "AIza") — ' +
+        'token OAuth ("AQ." ou "ya29.") não funciona aqui. ' +
+        'Use Correção IA → Configurar chave da API.')
+    }
 
     // Cota diária ZERO (modelo sem acesso no nível gratuito, ex.: Pro)
     // não passa esperando — falha na hora com instrução clara.
