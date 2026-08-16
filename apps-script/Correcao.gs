@@ -240,6 +240,12 @@ function explicarErroDeChave(codigo, corpo) {
     return 'A API Generative Language não está ativada no projeto dessa chave. ' +
       'Ative no Google Cloud Console ou gere a chave direto no AI Studio.'
   }
+  if (codigo === 429 && /spend(ing)? cap/i.test(corpo)) {
+    return 'A chave funciona, mas o PROJETO atingiu o teto de gastos mensal.\n' +
+      'Ajuste o limite em https://ai.studio/spend — é um teto que você mesmo define.\n' +
+      'Atenção: é mensal, não volta na virada do dia. Outra chave do mesmo projeto ' +
+      'esbarra no mesmo teto.'
+  }
   if (codigo === 429) {
     return 'Cota esgotada para esta chave hoje. O limite é por projeto/conta: ' +
       'gerar outra chave na mesma conta não aumenta o limite.'
@@ -969,6 +975,14 @@ function requisitarComRetentativa(url, chave, corpo) {
         'propriedade GEMINI_API_KEY contém a chave do AI Studio (começa com "AIza") — ' +
         'token OAuth ("AQ." ou "ya29.") não funciona aqui. ' +
         'Use Correção IA → Configurar chave da API.')
+    }
+
+    // Teto de gasto MENSAL do projeto: não recupera esperando
+    // segundos nem virando o dia. Insistir só queima tempo.
+    if (codigo === 429 && /spend(ing)? cap/i.test(corpoErro)) {
+      throw new Error('O projeto atingiu o teto de gastos configurado no AI Studio. ' +
+        'Isso não é a cota diária — não volta na virada do dia. Ajuste em ' +
+        'https://ai.studio/spend (ou aguarde a virada do mês).')
     }
 
     // Cota diária ZERO (modelo sem acesso no nível gratuito, ex.: Pro)

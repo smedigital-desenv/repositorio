@@ -190,9 +190,16 @@ A escolha depende do nível da chave:
 - **Chave com faturamento**: use o Pro mais recente. Custa centavos por lote e
   é o mais confiável em grade densa.
 
-> **Chave nova não renova cota.** O limite gratuito é por *projeto/conta*, não
-> por chave: gerar uma segunda chave na mesma conta não dá mais nenhuma
-> requisição. E multiplicar contas para furar a cota viola os termos do Google
+> **Chave nova não renova cota.** O limite é por *projeto/conta*, não por
+> chave: gerar uma segunda chave na mesma conta não dá mais nenhuma
+> requisição.
+>
+> Há **dois limites diferentes**, com soluções diferentes. A *cota diária*
+> (429 comum) volta na virada do dia. O *teto de gastos mensal* — 429 dizendo
+> "monthly spending cap" — é um limite que o próprio dono configurou em
+> [ai.studio/spend](https://ai.studio/spend); esse **não** volta amanhã, só na
+> virada do mês ou quando o teto for aumentado. O menu *Verificar chave
+> configurada* distingue os dois. E multiplicar contas para furar a cota viola os termos do Google
 > e arrisca bloqueio. Os caminhos honestos quando o limite aperta são ativar
 > faturamento, esperar a renovação diária, reduzir requisições (lotes maiores,
 > `leitura_dupla = NAO`) ou cada professor usar a própria chave na própria
