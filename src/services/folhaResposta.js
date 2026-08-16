@@ -589,11 +589,15 @@ com as questões da página que falta como \`"?"\`, e marque \`revisar\` como \`
 - O array \`respostas\` precisa ter exatamente ${d.questoes.length} itens, um para cada
   número da lista acima, em ordem crescente. Não pule questão nem invente
   questão que não está na lista.
-- Considere marcada a alternativa cujo quadrado está claramente mais escuro que
-  os demais da mesma linha.
-- Nenhum quadrado escurecido na linha → \`"-"\` (em branco).
-- Dois ou mais quadrados escurecidos na mesma linha → \`"*"\` (marca dupla).
-- Marca fraca, rasurada, ambígua ou cortada na imagem → \`"?"\` (ilegível).
+- Marca válida é QUALQUER tinta intencional de caneta dentro ou sobre o
+  quadrado: pintura completa, X, risco, traço parcial, bolinha, rabisco que
+  vaza da borda. A letra impressa pode continuar visível sob marca leve —
+  ainda é marca. Tinta que vaza e encosta no quadrado vizinho pertence ao
+  quadrado onde está o centro do gesto.
+- Nenhuma tinta em quadrado algum da linha → \`"-"\` (em branco).
+- Duas marcas intencionais em quadrados diferentes → \`"*"\` (marca dupla).
+  Vazamento de tinta não é segunda marca.
+- Marca rasurada, cortada na imagem ou impossível de atribuir → \`"?"\`.
 - Não invente e não complete. Na dúvida entre uma letra e \`"?"\`, escolha \`"?"\`.
 - Não use o gabarito para decidir o que o aluno marcou. Leia a imagem primeiro,
   compare depois.

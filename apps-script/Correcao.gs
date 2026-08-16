@@ -103,6 +103,8 @@ function prepararPlanilha() {
       ['nota_maxima',    10, 'Escala da nota'],
       ['turma_padrao',   '', 'Usado quando a IA não consegue ler o campo TURMA da folha (opcional)'],
       ['leitura_dupla',  'SIM', 'Lê cada folha 2x com estratégias diferentes; divergência vira "?" e vai para revisão. Gasta 2 requisições por arquivo. Só desligue (NAO) se a cota apertar'],
+      ['modelo_b',       '', 'Modelo da 2ª passada da leitura dupla. Vazio = o mesmo da 1ª. Usar um modelo diferente (ex.: gemini-3.5-flash-lite) descorrelaciona erros e divide a cota entre dois limites'],
+      ['releitura_dirigida', 'SIM', 'Quando as 2 passadas divergem, faz uma 3ª requisição olhando SÓ as questões divergentes. Se 2 das 3 leituras concordarem, adota e anota; senão fica "?" para conferência'],
     ])
     config.setColumnWidth(1, 150)
     config.setColumnWidth(2, 220)
@@ -240,6 +242,8 @@ function obterConfig() {
     turmaPadrao: String(cfg.turma_padrao || '').trim(),
     // Ligada por padrão: quem quiser economizar cota desliga por escrito.
     leituraDupla: String(cfg.leitura_dupla || 'SIM').trim().toUpperCase() !== 'NAO',
+    modeloB: String(cfg.modelo_b || '').trim(),
+    releituraDirigida: String(cfg.releitura_dirigida || 'SIM').trim().toUpperCase() !== 'NAO',
   }
 }
 
@@ -381,6 +385,31 @@ function listarArquivos(pastaId) {
  * (No teste real que motivou isto, o flash errou 4 questões de 45
  * com confiança — nenhuma teria passado por um par de estratégias.)
  */
+/**
+ * O que conta como marca. As instruções da folha pedem o quadrado
+ * todo pintado, mas aluno real faz X, risco, bolinha, traço que
+ * vaza — a leitura tem que aceitar o mundo como ele é, e a
+ * instrução impressa fica como aspiração, não como filtro.
+ */
+function regrasMarcaReal() {
+  return [
+    '## O que conta como marca',
+    '',
+    'O ideal é o quadrado todo pintado, mas alunos reais marcam de vários',
+    'jeitos. Considere marca válida QUALQUER tinta intencional de caneta dentro',
+    'do quadrado ou sobre ele: X, risco, traço parcial, bolinha, rabisco que',
+    'vaza da borda. A letra impressa pode continuar visível sob marca leve —',
+    'ainda é marca.',
+    '- Tinta que vaza de um quadrado e encosta no vizinho: a marca pertence ao',
+    '  quadrado onde está o CENTRO do gesto, não ao que foi tocado de raspão.',
+    '- Linha sem nenhuma tinta em quadrado algum: "-".',
+    '- Duas marcas intencionais em quadrados diferentes da linha: "*".',
+    '  Vazamento de tinta não é segunda marca.',
+    '- Só use "?" quando nem com cuidado dá para dizer qual quadrado o aluno',
+    '  quis marcar.',
+  ]
+}
+
 function construirPrompt(cfg, questoes, estrategia) {
   var letras = cfg.letras.join(', ')
 
@@ -388,16 +417,15 @@ function construirPrompt(cfg, questoes, estrategia) {
     'Trabalhe linha por linha usando as letras impressas nos quadrados:',
     '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
     '   o número da questão pela posição na tabela.',
-    '2. Liste quais letras impressas em cinza continuam VISÍVEIS na linha',
-    '   (quadrados não marcados deixam a letra à mostra).',
-    '3. A letra que está encoberta por rabisco de caneta é a marcada. Se todas',
-    '   estiverem visíveis, a linha está em branco ("-"). Se mais de uma',
-    '   estiver encoberta, é marca dupla ("*").',
+    '2. Para CADA letra impressa da linha (' + letras + '), examine o quadrado',
+    '   dela e diga se há tinta de caneta dentro ou sobre ele.',
+    '3. A alternativa marcada é a que tem tinta. Nenhuma com tinta: "-".',
+    '   Mais de uma com marca intencional: "*".',
   ] : [
     'Trabalhe bloco por bloco, linha por linha, sem pular nem resumir:',
     '1. Localize a linha pelo número impresso na primeira coluna. Nunca deduza',
     '   o número da questão pela posição na tabela.',
-    '2. Ache o quadrado com rabisco de caneta e suba pela coluna até o',
+    '2. Ache o quadrado com tinta de caneta e suba pela coluna até o',
     '   cabeçalho para identificar a letra. Confira com a letra impressa nos',
     '   quadrados vizinhos da mesma coluna, acima ou abaixo.',
     '3. Não use padrão, sequência ou "impressão geral": cada linha é uma',
@@ -440,11 +468,10 @@ function construirPrompt(cfg, questoes, estrategia) {
     '',
     '- Devolva exatamente ' + questoes.length + ' itens em "respostas", um para cada número',
     '  da lista acima, em ordem crescente.',
-    '- Marcada = o quadrado claramente mais escuro que os outros da mesma linha.',
-    '- Nenhum quadrado escurecido na linha: "-"',
-    '- Dois ou mais escurecidos na mesma linha: "*"',
-    '- Marca fraca, rasurada, ambígua ou cortada na imagem: "?"',
+    '- Marca rasurada, cortada na imagem ou impossível de atribuir: "?"',
     '- Na dúvida entre uma letra e "?", devolva "?". Não chute.',
+    '',
+  ]).concat(regrasMarcaReal()).concat([
     '',
     '## Número de chamada',
     '',
@@ -511,15 +538,20 @@ function esquemaResposta() {
 }
 
 /**
- * Lê um arquivo com duas estratégias e mescla. Onde as leituras
- * divergirem, a marcação vira "?" — melhor uma folha a mais na
- * conferência do que uma letra errada com cara de certa na nota.
+ * Lê um arquivo com duas estratégias (e, se configurado, dois
+ * modelos) e mescla. Onde as leituras divergirem, ou uma terceira
+ * releitura dirigida desempata por 2 de 3, ou a marcação vira "?"
+ * — melhor uma folha a mais na conferência do que uma letra errada
+ * com cara de certa na nota.
  */
 function lerFolha(arquivo, cfg, chave, questoes) {
-  var a = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'colunas'), cfg, chave)
+  var a = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'colunas'), cfg.modelo, chave)
   if (!cfg.leituraDupla) return a
-  var b = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'fantasma'), cfg, chave)
-  return mesclarLeituras(a, b)
+
+  var b = lerFolhaUmaVez(arquivo, construirPrompt(cfg, questoes, 'fantasma'),
+                         cfg.modeloB || cfg.modelo, chave)
+  var mescladas = mesclarLeituras(a, b)
+  return releituraDirigida(arquivo, mescladas, b, cfg, chave, questoes)
 }
 
 function mesclarLeituras(a, b) {
@@ -536,7 +568,7 @@ function mesclarLeituras(a, b) {
 
   for (var i = 0; i < a.length; i++) {
     var fa = a[i], fb = b[i]
-    var divergentes = []
+    fa._divergentes = []
 
     var porQuestaoB = {}
     var respB = fb.respostas || []
@@ -551,7 +583,9 @@ function mesclarLeituras(a, b) {
       var vB = porQuestaoB[num]
       if (vB !== undefined && vA !== vB) {
         respA[m].marcada = '?'
-        divergentes.push(num)
+        // Guarda o que cada leitura viu: a releitura dirigida vota
+        // contra esses dois valores.
+        fa._divergentes.push({ questao: num, a: vA, b: vB })
       }
     }
 
@@ -560,18 +594,141 @@ function mesclarLeituras(a, b) {
     }
     if (String(fa.chamada_marcada).trim() !== String(fb.chamada_marcada).trim()) {
       fa.chamada_marcada = '?'
-      divergentes.push('chamada')
-    }
-
-    if (divergentes.length) {
       fa.observacao = ((fa.observacao || '') +
-        ' as duas leituras divergiram em: ' + divergentes.join(', ')).trim()
+        ' as duas leituras divergiram na chamada marcada').trim()
     }
   }
   return a
 }
 
-function lerFolhaUmaVez(arquivo, prompt, cfg, chave) {
+/**
+ * Terceira requisição, focada SÓ nas questões em que as duas
+ * leituras discordaram. Se a releitura concordar com uma das duas,
+ * vale o 2 de 3 — a questão é adotada e anotada, sem mandar a folha
+ * inteira para revisão. Se discordar das duas, fica "?" e a folha
+ * vai para conferência humana.
+ *
+ * Divergência demais é outro problema: página torta, foto ruim.
+ * Nesse caso releitura não é confiável — tudo fica "?" com aviso.
+ */
+function releituraDirigida(arquivo, folhas, leituraB, cfg, chave, questoes) {
+  var teto = Math.max(3, Math.ceil(questoes.length * 0.25))
+  var alvos = []
+
+  for (var i = 0; i < folhas.length; i++) {
+    var f = folhas[i]
+    var div = f._divergentes || []
+    if (!div.length) continue
+
+    if (!cfg.releituraDirigida || div.length > teto) {
+      var nums = div.map(function (d) { return d.questao })
+      f.observacao = ((f.observacao || '') +
+        (div.length > teto
+          ? ' ' + div.length + ' divergências entre as leituras — confira a qualidade da digitalização'
+          : ' as duas leituras divergiram em: ' + nums.join(', '))).trim()
+      continue
+    }
+    alvos.push({ folha: f, pagina: f.pagina_no_arquivo || i + 1 })
+  }
+
+  if (!alvos.length) return limparCamposInternos(folhas)
+
+  var relidas
+  try {
+    relidas = lerFolhaUmaVez(arquivo,
+      construirPromptReleitura(cfg, alvos), cfg.modelo, chave)
+  } catch (e) {
+    for (var k = 0; k < alvos.length; k++) {
+      alvos[k].folha.observacao = ((alvos[k].folha.observacao || '') +
+        ' releitura dirigida falhou (' + String(e.message).slice(0, 120) + ')').trim()
+    }
+    return limparCamposInternos(folhas)
+  }
+
+  var porPagina = {}
+  for (var r = 0; r < relidas.length; r++) {
+    porPagina[relidas[r].pagina_no_arquivo || r + 1] = relidas[r]
+  }
+
+  for (var t = 0; t < alvos.length; t++) {
+    var alvo = alvos[t]
+    var relida = porPagina[alvo.pagina]
+    var porQuestaoC = {}
+    var respC = (relida && relida.respostas) || []
+    for (var c = 0; c < respC.length; c++) {
+      porQuestaoC[parseInt(respC[c].questao, 10)] = String(respC[c].marcada || '').trim().toUpperCase()
+    }
+
+    var resolvidas = [], pendentes = []
+    var div = alvo.folha._divergentes
+    for (var d = 0; d < div.length; d++) {
+      var vC = porQuestaoC[div[d].questao]
+      if (vC && vC !== '?' && (vC === div[d].a || vC === div[d].b)) {
+        definirResposta(alvo.folha, div[d].questao, vC)
+        resolvidas.push('Q' + div[d].questao + '=' + vC)
+      } else {
+        pendentes.push(div[d].questao)
+      }
+    }
+
+    if (resolvidas.length) {
+      alvo.folha.nota_releitura = 'releitura dirigida decidiu por 2 de 3: ' + resolvidas.join(', ')
+    }
+    if (pendentes.length) {
+      alvo.folha.observacao = ((alvo.folha.observacao || '') +
+        ' releitura não resolveu: ' + pendentes.join(', ')).trim()
+    }
+  }
+
+  return limparCamposInternos(folhas)
+}
+
+function definirResposta(folha, questao, valor) {
+  var resp = folha.respostas || []
+  for (var i = 0; i < resp.length; i++) {
+    if (parseInt(resp[i].questao, 10) === questao) { resp[i].marcada = valor; return }
+  }
+}
+
+function limparCamposInternos(folhas) {
+  for (var i = 0; i < folhas.length; i++) delete folhas[i]._divergentes
+  return folhas
+}
+
+function construirPromptReleitura(cfg, alvos) {
+  var letras = cfg.letras.join(', ')
+  var lista = alvos.map(function (a) {
+    return '- Página ' + a.pagina + ': questões ' +
+      a.folha._divergentes.map(function (d) { return d.questao }).join(', ')
+  })
+
+  return [
+    'Releitura DIRIGIDA de uma folha de respostas escaneada. Duas leituras',
+    'anteriores discordaram em algumas questões; examine com máxima atenção',
+    'SOMENTE as questões listadas abaixo. Você não sabe o que as leituras',
+    'anteriores viram — leia do zero, direto da imagem.',
+    '',
+    'A folha: grade com o número da questão (dois dígitos) na primeira coluna',
+    'e as alternativas ' + letras + ' nas demais. Cada quadrado tem a letra',
+    'impressa em cinza claro no centro — isso não é marca do aluno.',
+    '',
+    'Questões a reler:',
+  ].concat(lista).concat([
+    '',
+    'Para cada questão listada: localize a linha pelo número impresso, examine',
+    'CADA quadrado da linha um a um, e devolva a letra marcada, "-" (linha sem',
+    'tinta), "*" (duas marcas intencionais) ou "?" (impossível decidir).',
+    '',
+  ]).concat(regrasMarcaReal()).concat([
+    '',
+    'Devolva em "folhas" um item por página listada, com pagina_no_arquivo e',
+    '"respostas" contendo APENAS as questões pedidas daquela página. Os campos',
+    'chamada_escrita e chamada_marcada devolva como "" — não fazem parte desta',
+    'releitura.',
+  ]).join('\n')
+}
+
+function lerFolhaUmaVez(arquivo, prompt, modelo, chave) {
   var blob = arquivo.getBlob()
   var bytes = blob.getBytes()
   if (bytes.length > MAX_BYTES_ARQUIVO) {
@@ -597,7 +754,7 @@ function lerFolhaUmaVez(arquivo, prompt, cfg, chave) {
   }
 
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-            encodeURIComponent(cfg.modelo) + ':generateContent'
+            encodeURIComponent(modelo) + ':generateContent'
 
   var resposta = requisitarComRetentativa(url, chave, corpo)
   var texto = extrairTexto(resposta)
@@ -745,7 +902,7 @@ function gravarFolha(aba, indice, folha, arquivo, cfg, gab) {
   if (leitura.chamada !== null) indice.chamadas[String(leitura.chamada)] = linha
   indice.arquivos[arquivo.getId()] = true
 
-  aplicarCorrecaoNaLinha(aba, linha, cfg, gab, leitura.avisos)
+  aplicarCorrecaoNaLinha(aba, linha, cfg, gab, leitura.avisos, leitura.notas)
 }
 
 /**
@@ -783,7 +940,7 @@ function mesclarLinha(aba, linha, leitura, arquivo, cfg, gab) {
   if (!atuais[COL_TURMA - 1] && leitura.turma) atuais[COL_TURMA - 1] = leitura.turma
 
   aba.getRange(linha, 1, 1, largura).setValues([atuais])
-  aplicarCorrecaoNaLinha(aba, linha, cfg, gab, avisos)
+  aplicarCorrecaoNaLinha(aba, linha, cfg, gab, avisos, leitura.notas)
 }
 
 /**
@@ -851,6 +1008,9 @@ function normalizarLeitura(folha, cfg, gab) {
     turma: String(folha.turma || '').trim() || cfg.turmaPadrao,
     respostas: respostas,
     avisos: avisos,
+    // Notas informativas (ex.: questões decididas por 2 de 3 na
+    // releitura): aparecem no Motivo mas NÃO mandam para revisão.
+    notas: folha.nota_releitura ? [String(folha.nota_releitura).trim()] : [],
   }
 }
 
@@ -867,7 +1027,7 @@ function normalizarDigitos(valor) {
  * assim o professor pode corrigir uma marcação à mão e mandar
  * recalcular sem reprocessar a imagem.
  */
-function aplicarCorrecaoNaLinha(aba, linha, cfg, gab, avisosExtras) {
+function aplicarCorrecaoNaLinha(aba, linha, cfg, gab, avisosExtras, notas) {
   var nQ = gab.questoes.length
   var marcacoes = aba.getRange(linha, PRIMEIRA_COL_QUESTAO, 1, nQ).getValues()[0]
 
@@ -902,13 +1062,16 @@ function aplicarCorrecaoNaLinha(aba, linha, cfg, gab, avisosExtras) {
   var avisos = (avisosExtras || []).slice()
   if (problemas) avisos.push(problemas + ' questão(ões) em branco, duplas ou ilegíveis')
 
+  // Notas informativas entram no Motivo mas não disparam revisão —
+  // é o que permite à releitura dirigida resolver sem custar conferência.
   var revisar = conflito || problemas > 0 || avisos.length > 0
+  var motivo = avisos.concat(notas || []).join('; ')
 
   aba.getRange(linha, COL_ACERTOS).setValue(acertos)
   aba.getRange(linha, COL_TOTAL).setValue(comGabarito)
   aba.getRange(linha, COL_NOTA).setValue(nota)
   aba.getRange(linha, COL_REVISAR).setValue(revisar ? 'SIM' : '')
-  aba.getRange(linha, COL_MOTIVO).setValue(avisos.join('; '))
+  aba.getRange(linha, COL_MOTIVO).setValue(motivo)
 
   aba.getRange(linha, PRIMEIRA_COL_QUESTAO, 1, nQ)
     .setBackgrounds([fundos.map(function (c) { return c || '#ffffff' })])

@@ -216,6 +216,32 @@ e a folha vai para conferência**.
 Custo: 2 requisições por arquivo em vez de 1. `leitura_dupla = NAO` na Config
 desliga — só faça isso com modelo pago (Pro), nunca com flash gratuito.
 
+**Dois modelos em vez de dois prompts.** `modelo_b` na Config define o modelo
+da segunda passada (ex.: `modelo = gemini-3.7-flash`, `modelo_b =
+gemini-3.5-flash-lite`). Modelos diferentes erram em lugares diferentes —
+descorrelaciona mais que só variar a estratégia — e cada um consome a própria
+cota diária, então a dupla não divide o limite de nenhum dos dois.
+
+**Releitura dirigida (`releitura_dirigida`, ligada por padrão).** Quando as
+duas passadas divergem em poucas questões, uma terceira requisição examina SÓ
+essas questões, com atenção total. Se a releitura concordar com uma das duas
+leituras originais, vale o **2 de 3**: a questão é adotada e anotada no Motivo
+("releitura dirigida decidiu por 2 de 3: Q15=D"), sem mandar a folha para
+conferência. Se discordar das duas, fica `?` e a folha vai para revisão.
+Divergência em mais de ~25% das questões pula a releitura — isso é sintoma de
+digitalização ruim, não de marca ambígua, e a folha inteira vai para
+conferência com aviso.
+
+### Marcação real de aluno
+
+As instruções impressas pedem o quadrado todo pintado — continue orientando
+assim, marca cheia é a mais robusta. Mas a **leitura não exige isso**: X,
+risco, traço parcial, bolinha e rabisco que vaza da borda contam como marca,
+e tinta que invade o quadrado vizinho pertence ao quadrado onde está o centro
+do gesto. `-` é só linha sem tinta nenhuma; `*` exige duas marcas
+intencionais, não um vazamento. A instrução impressa é a aspiração; a leitura
+aceita o mundo como ele é.
+
 ## 6b. Alternativa: corrigir no chat do Gemini
 
 Para poucas folhas, sem configurar nada: na tela da folha, **Copiar prompt do
