@@ -27,7 +27,8 @@ escaneada. Isso muda todas as escolhas de desenho — o que ajuda uma leitora
 |---|---|
 | Tudo em tabela com borda preta contínua | Modelo de visão lê grade muito melhor que caixas alinhadas por espaço em branco |
 | Número da questão impresso em **toda** linha, com dois dígitos | Nenhuma linha depende de contagem para ser identificada. Folha torta ou cortada continua legível |
-| Letra impressa em cinza claro **dentro** de cada quadrado | Âncora de coluna: o modelo sabe qual coluna é qual sem contar da esquerda para a direita |
+| Letra **preta ao lado esquerdo** de cada quadrado, fora dele | Âncora de coluna que a marca do aluno nunca cobre — a mais importante da folha (ver abaixo) |
+| Letra em cinza claro **dentro** de cada quadrado | Âncora secundária, some sob a marca; ainda serve nos quadrados não marcados |
 | Quadrado, não círculo, e do maior tamanho que a página permitir | Área preenchida maior sobrevive melhor à compressão do scanner e à foto de celular |
 | Nenhum fundo cinza, tarja ou zebra na grade | Qualquer área escura impressa compete com a marca do aluno |
 | Quadrados pretos nos quatro cantos, o superior esquerdo maior | Delimitam a folha e resolvem orientação em imagem girada |
@@ -235,6 +236,24 @@ para conferência com aviso. Entre ~25% e 50%, a releitura roda normalmente
 (com um `modelo_b` mais fraco que o principal, divergência nessa faixa é
 fraqueza do modelo B, não do scan — e é onde a releitura mais ajuda), mas o
 Motivo ganha a dica de trocar o `modelo_b` por um mais forte.
+
+### Por que a letra âncora fica FORA do quadrado
+
+A primeira versão da folha só tinha a letra cinza dentro do quadrado. Em teste
+real, `gemini-3.7-flash` e `gemini-3.5-flash` — dois modelos diferentes, em
+leitura dupla — **erraram a coluna das mesmas quatro questões**, todas com a
+marca em C. Quando dois modelos erram igual, o voto 2 de 3 não acusa nada: a
+falha não estava no modelo, estava na folha.
+
+A causa: a única âncora de coluna ficava dentro do quadrado, e a marca do
+aluno a encobre **justamente na célula que precisa ser identificada**. Sem
+referência local, o modelo cai em contar células da esquerda — e desliza.
+
+A folha agora imprime a letra também **em preto, à esquerda de cada
+quadrado**, onde nenhuma marca alcança. Folhas impressas antes dessa mudança
+continuam legíveis (os prompts sabem lidar com os dois formatos, usando as
+letras cinza dos quadrados não marcados), mas **reimprima quando puder**: é a
+correção que ataca a causa, não o sintoma.
 
 ### Marcação real de aluno
 

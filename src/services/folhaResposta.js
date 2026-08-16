@@ -9,14 +9,15 @@
 //  2. O número da questão é impresso em TODA linha, com dois
 //     dígitos. Nenhuma linha depende de contagem para ser
 //     identificada.
-//  3. A letra é impressa em cinza claro DENTRO de cada quadrado.
-//     É a âncora de coluna: mesmo com a folha torta, cortada ou
-//     fotografada de lado, o modelo sabe qual coluna é qual sem
-//     contar. Ao preencher, o aluno cobre a letra — e "quadrado
-//     escuro" é exatamente o que o modelo procura.
-//     Por isso a digitalização precisa ser em TONS DE CINZA:
-//     scanner em preto-e-branco (1 bit) ou apaga o cinza ou o
-//     satura em preto, e os dois estragam a leitura.
+//  3. Cada célula tem DUAS letras: uma preta FORA do quadrado (à
+//     esquerda), que a marca nunca cobre, e uma cinza claro DENTRO,
+//     que some sob a tinta. A externa é a âncora de coluna — em
+//     teste real, dois modelos diferentes erraram a coluna das
+//     mesmas questões quando a única âncora era a de dentro,
+//     encoberta justamente nas células marcadas.
+//     A digitalização precisa ser em TONS DE CINZA: scanner em
+//     preto-e-branco (1 bit) ou apaga o cinza ou o satura em preto,
+//     e os dois estragam a leitura.
 //  4. Nenhum fundo cinza, nenhuma tarja, nenhuma zebra na grade.
 //     Qualquer área escura impressa compete com a marca do aluno.
 //  5. Marcas de canto (as quadradas pretas) delimitam a folha. O
@@ -108,8 +109,13 @@ function calcularLayout(total, nLetras) {
   const cell = limitar(arredondar((larguraBloco - LARGURA_NUM) / nLetras), CELL_MIN, CELL_MAX)
   const rowH = limitar(arredondar(ALTURA_GRADE / linhas), LINHA_MIN, LINHA_MAX)
 
-  const boxW = Math.min(arredondar(cell - 2.6), BOX_MAX)
-  const boxH = Math.min(arredondar(rowH - 3), arredondar(boxW * 0.8))
+  // A letra âncora impressa FORA do quadrado (à esquerda) come
+  // ~3.1mm da célula. Ela existe porque a letra de dentro é coberta
+  // exatamente quando o aluno marca — e foi isso que fez dois
+  // modelos diferentes errarem a coluna das mesmas questões em
+  // teste real. A âncora externa nunca é coberta.
+  const boxW = limitar(arredondar(cell - 3.5), 4.5, BOX_MAX)
+  const boxH = Math.min(arredondar(rowH - 3), arredondar(boxW * 0.9))
   const fantasma = limitar(arredondar(boxH * 1.3), 5.5, 9)
 
   return { blocos, porPagina, linhas, cell, rowH, boxW, boxH, fantasma }
@@ -144,7 +150,10 @@ function blocoRespostasHtml(numeros, letras) {
       <td class="cNum">${pad2(num)}</td>
       ${letras.map(l => `
         <td class="cBox">
-          <span class="box"><span class="letraFantasma">${l}</span></span>
+          <span class="celula">
+            <span class="letraAncora">${l}</span>
+            <span class="box"><span class="letraFantasma">${l}</span></span>
+          </span>
         </td>`).join('')}
     </tr>`).join('')
 
@@ -174,7 +183,10 @@ function chamadaHtml() {
       <td class="chRot">${rotulo}</td>
       ${digitos.map(d => `
         <td class="cBox">
-          <span class="box"><span class="letraFantasma">${d}</span></span>
+          <span class="celula">
+            <span class="letraAncora">${d}</span>
+            <span class="box"><span class="letraFantasma">${d}</span></span>
+          </span>
         </td>`).join('')}
     </tr>`
 
@@ -400,16 +412,25 @@ function estilos(layout) {
     .gradeResp .box { width: var(--boxW); height: var(--boxH); }
     .gradeResp .letraFantasma { font-size: var(--fantasma); }
 
-    .gradeCh .cBox, .gradeCh .cLetra { width: 6.6mm; }
+    .gradeCh .cBox, .gradeCh .cLetra { width: 8mm; }
     .gradeCh .cBox { height: 6.6mm; }
+    .gradeCh .box { width: 4.6mm; height: 4.6mm; }
 
-    /* O quadrado a marcar. A letra fantasma é a âncora de coluna:
-       clara o bastante para não virar marca, escura o bastante
-       para sobreviver ao escaneamento em tons de cinza. */
+    /* Cada célula tem DUAS letras: a âncora preta fora do quadrado
+       (à esquerda), que a marca do aluno nunca cobre, e a fantasma
+       cinza dentro, que some sob a marca. A âncora é o que impede o
+       leitor de errar a coluna quando o quadrado está pintado. */
+    .celula {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 1mm; width: 100%;
+    }
+    .letraAncora { font-size: 6.5pt; font-weight: 700; color: #000; }
+
     .box {
       display: inline-flex; align-items: center; justify-content: center;
       width: 5.6mm; height: 5mm;
       border: 0.4mm solid #000;
+      flex-shrink: 0;
     }
     .letraFantasma { font-size: 6pt; color: #bdbdbd; }
 
@@ -570,9 +591,16 @@ A folha tem duas grades:
 2. RESPOSTAS — uma ou mais tabelas. A primeira coluna traz o número da questão
    com dois dígitos. As demais colunas são as alternativas ${letras}.
 
-Cada quadrado tem a letra (ou o dígito) impressa em cinza claro no centro.
-Essa letra impressa NÃO é marca do aluno: serve só para você identificar a
-coluna. Marca do aluno é traço escuro de caneta cobrindo o quadrado.
+Cada célula tem DUAS letras impressas (ou dois dígitos, na grade de chamada):
+
+- Uma letra PRETA, pequena, à ESQUERDA do quadrado, fora dele. Ela nunca é
+  coberta pela marca do aluno. É a âncora definitiva: para saber qual
+  alternativa um quadrado representa, leia a letra preta ao lado dele.
+- Uma letra CINZA claro dentro do quadrado, que some quando o aluno pinta.
+
+Nenhuma das duas é marca do aluno. Marca do aluno é tinta de caneta no
+quadrado. NUNCA identifique a coluna contando células a partir da esquerda:
+leia a letra preta ao lado do quadrado marcado.
 
 A folha desta prova tem ${d.paginas === 1 ? 'uma única página' : `${d.paginas} páginas`} e ${d.questoes.length} questões,
 numeradas: ${d.questoes.join(', ')}.
