@@ -78,6 +78,7 @@ function onOpen() {
     .createMenu('Correção IA')
     .addItem('Preparar planilha', 'prepararPlanilha')
     .addItem('Configurar chave da API…', 'configurarChave')
+    .addItem('Verificar chave configurada', 'verificarChave')
     .addItem('Listar modelos disponíveis', 'listarModelosDaApi')
     .addSeparator()
     .addItem('Corrigir folhas da pasta', 'corrigirFolhas')
@@ -159,6 +160,91 @@ function configurarChave() {
 
   PropertiesService.getScriptProperties().setProperty(PROP_CHAVE, chave)
   ui.alert('Chave salva.')
+}
+
+/**
+ * Diagnóstico da credencial guardada: mostra o que está REALMENTE
+ * salvo (mascarado) e testa contra a API.
+ *
+ * Existe porque o campo das Propriedades do Script esconde o valor
+ * e rola para a direita — dá para olhar a tela, achar que a chave
+ * está certa, e ela estar cortada. Aqui o tamanho não mente.
+ */
+function verificarChave() {
+  var ui = SpreadsheetApp.getUi()
+  var props = PropertiesService.getScriptProperties()
+  var bruto = props.getProperty(PROP_CHAVE)
+
+  if (!bruto) {
+    var outras = props.getKeys().filter(function (k) { return k !== PROP_CHAVE })
+    ui.alert('Nenhuma chave em ' + PROP_CHAVE + '.' +
+      (outras.length ? '\n\nO script só lê ' + PROP_CHAVE + '. Existem outras ' +
+        'propriedades salvas (' + outras.join(', ') + '), mas elas são ignoradas.' : '') +
+      '\n\nUse Correção IA → Configurar chave da API.')
+    return
+  }
+
+  var chave = limparChave(bruto)
+  var linhas = [
+    'Propriedade: ' + PROP_CHAVE,
+    'Tamanho salvo: ' + bruto.length + ' caracteres' +
+      (bruto.length !== chave.length
+        ? ' (' + chave.length + ' depois de tirar espaços/aspas — havia sujeira na cópia)'
+        : ''),
+    'Esperado: 39 caracteres',
+    'Valor: ' + mascarar(chave),
+    '',
+  ]
+
+  var problema = problemaNaChave(chave)
+  linhas.push(problema ? 'FORMATO: ' + problema : 'Formato: parece uma chave válida.')
+  linhas.push('')
+
+  if (!problema) {
+    var resp = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+      { headers: { 'x-goog-api-key': chave }, muteHttpExceptions: true })
+    var codigo = resp.getResponseCode()
+
+    if (codigo === 200) {
+      linhas.push('Teste na API: OK — a chave funciona.')
+    } else {
+      linhas.push('Teste na API: HTTP ' + codigo)
+      linhas.push(explicarErroDeChave(codigo, resp.getContentText()))
+    }
+  }
+
+  ui.alert('Verificação da chave', linhas.join('\n'), ui.ButtonSet.OK)
+}
+
+/** Mostra só as pontas: confere a identidade sem expor a credencial. */
+function mascarar(chave) {
+  if (chave.length <= 12) return chave.slice(0, 4) + '…'
+  return chave.slice(0, 6) + '…' + chave.slice(-4)
+}
+
+function explicarErroDeChave(codigo, corpo) {
+  if (/API_KEY_INVALID/.test(corpo)) {
+    return 'A chave não é reconhecida pelo Google. Causas comuns:\n' +
+      '- foi copiada incompleta (o campo rola para a direita — copie do AI Studio);\n' +
+      '- foi apagada ou regenerada no AI Studio depois de salva aqui;\n' +
+      '- pertence a um projeto onde a API Generative Language não está ativa.'
+  }
+  if (/API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_IP_ADDRESS_BLOCKED|API_KEY_SERVICE_BLOCKED/.test(corpo)) {
+    return 'A chave existe, mas tem RESTRIÇÕES que barram este uso. No Google Cloud → ' +
+      'Credenciais, abra a chave e deixe "Restrições de aplicativo" como Nenhuma ' +
+      '(o Apps Script não envia referenciador de navegador) e libere a API ' +
+      'Generative Language nas restrições de API.'
+  }
+  if (codigo === 403 && /SERVICE_DISABLED|has not been used/.test(corpo)) {
+    return 'A API Generative Language não está ativada no projeto dessa chave. ' +
+      'Ative no Google Cloud Console ou gere a chave direto no AI Studio.'
+  }
+  if (codigo === 429) {
+    return 'Cota esgotada para esta chave hoje. O limite é por projeto/conta: ' +
+      'gerar outra chave na mesma conta não aumenta o limite.'
+  }
+  return String(corpo).slice(0, 300)
 }
 
 /** Tira espaço, quebra de linha e aspas que vêm junto na cópia. */
