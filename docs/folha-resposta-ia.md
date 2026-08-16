@@ -228,9 +228,13 @@ essas questões, com atenção total. Se a releitura concordar com uma das duas
 leituras originais, vale o **2 de 3**: a questão é adotada e anotada no Motivo
 ("releitura dirigida decidiu por 2 de 3: Q15=D"), sem mandar a folha para
 conferência. Se discordar das duas, fica `?` e a folha vai para revisão.
-Divergência em mais de ~25% das questões pula a releitura — isso é sintoma de
-digitalização ruim, não de marca ambígua, e a folha inteira vai para
-conferência com aviso.
+
+Os limiares: divergência em **mais da metade** das questões pula a releitura —
+isso é sintoma de digitalização ruim ou folha errada, e a folha inteira vai
+para conferência com aviso. Entre ~25% e 50%, a releitura roda normalmente
+(com um `modelo_b` mais fraco que o principal, divergência nessa faixa é
+fraqueza do modelo B, não do scan — e é onde a releitura mais ajuda), mas o
+Motivo ganha a dica de trocar o `modelo_b` por um mais forte.
 
 ### Marcação real de aluno
 

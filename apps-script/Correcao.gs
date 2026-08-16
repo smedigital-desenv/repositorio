@@ -608,11 +608,16 @@ function mesclarLeituras(a, b) {
  * inteira para revisão. Se discordar das duas, fica "?" e a folha
  * vai para conferência humana.
  *
- * Divergência demais é outro problema: página torta, foto ruim.
- * Nesse caso releitura não é confiável — tudo fica "?" com aviso.
+ * Divergência em MAIS DA METADE das questões é outro problema:
+ * página torta, foto ruim, folha errada. Nesse caso nem a releitura
+ * é confiável — tudo fica "?" com aviso. O teto é alto de propósito:
+ * com um modelo_b mais fraco que o principal, divergência de 30-40%
+ * é fraqueza do modelo B, não do scan — e é exatamente onde a
+ * releitura com o modelo forte mais ajuda. Nessa faixa a releitura
+ * roda e o Motivo ganha a dica de trocar o modelo_b.
  */
 function releituraDirigida(arquivo, folhas, leituraB, cfg, chave, questoes) {
-  var teto = Math.max(3, Math.ceil(questoes.length * 0.25))
+  var teto = Math.max(3, Math.ceil(questoes.length * 0.5))
   var alvos = []
 
   for (var i = 0; i < folhas.length; i++) {
@@ -624,7 +629,7 @@ function releituraDirigida(arquivo, folhas, leituraB, cfg, chave, questoes) {
       var nums = div.map(function (d) { return d.questao })
       f.observacao = ((f.observacao || '') +
         (div.length > teto
-          ? ' ' + div.length + ' divergências entre as leituras — confira a qualidade da digitalização'
+          ? ' ' + div.length + ' divergências entre as leituras — confira a qualidade da digitalização e considere um modelo_b mais forte'
           : ' as duas leituras divergiram em: ' + nums.join(', '))).trim()
       continue
     }
@@ -672,7 +677,14 @@ function releituraDirigida(arquivo, folhas, leituraB, cfg, chave, questoes) {
     }
 
     if (resolvidas.length) {
-      alvo.folha.nota_releitura = 'releitura dirigida decidiu por 2 de 3: ' + resolvidas.join(', ')
+      // Acima de 1/4 de divergência a dupla está desequilibrada:
+      // resolve mesmo assim, mas deixa a dica no Motivo.
+      var dicaModeloB = div.length > Math.ceil(questoes.length * 0.25)
+        ? '; a 2ª leitura divergiu em ' + div.length + ' de ' + questoes.length +
+          ' questões — considere um modelo_b mais forte'
+        : ''
+      alvo.folha.nota_releitura =
+        'releitura dirigida decidiu por 2 de 3: ' + resolvidas.join(', ') + dicaModeloB
     }
     if (pendentes.length) {
       alvo.folha.observacao = ((alvo.folha.observacao || '') +
