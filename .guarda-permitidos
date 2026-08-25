@@ -1,0 +1,22 @@
+# Exceções da guarda anti-vazamento.
+#
+# Um caminho por linha, relativo à raiz do repositório; linha terminada em `/`
+# cobre a pasta. Escreva SEMPRE o porquê — em bloco acima ou depois de `#` na
+# mesma linha. Sem justificativa, a próxima pessoa não tem como julgar se a
+# exceção ainda vale.
+#
+# ⚠️ Só entra aqui arquivo que a guarda barraria pela EXTENSÃO e que foi ABERTO
+# e conferido: sem nome, e-mail, RA, matrícula, CPF, telefone ou endereço. Esta
+# lista é para modelo em branco e definição de esquema — nunca para dado com
+# dono.
+#
+# ⚠️ Liberar o caminho NÃO desliga a checagem de CONTEÚDO. Um arquivo novo
+# dentro de uma pasta liberada continua barrado se trouxer CPF, chave privada,
+# service_role ou lista de e-mails. Conferido.
+#
+# ⚠️ O MESMO arquivo é lido pela guarda local, pelo workflow `guarda-dados.yml`
+# e pela auditoria semanal da rede.
+
+# Definição do banco (tabelas, RLS, funções). Conferido em 2026-08-25: nenhum
+# e-mail, nenhum CPF, nenhuma credencial.
+schema_completo.sql
